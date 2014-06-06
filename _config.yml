@@ -2,10 +2,10 @@
 #      Main Configs       #
 # ----------------------- #
 
-url: http://yoursite.com
-title: My Octopress Blog
-subtitle: A blogging framework for hackers.
-author: Your Name
+url: http://blog.segunda-mano.mx
+title: SMMX Tech Blog
+subtitle: Tech advetures in SMMX
+author: SMMX Tech Team
 simple_search: https://www.google.com/search
 description:
 
