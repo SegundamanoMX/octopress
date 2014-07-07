@@ -1,0 +1,743 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Postgresql Metrics With Logstash - SMMX Tech Blog</title>
+  <meta name="author" content="SMMX Tech Team">
+
+  
+  <meta name="description" content="by Ian Delahorne I thought I&rsquo;d share our setup at SegundaMano.mx
+for extracting PostgreSQL metrics with Logstash to
+push to graphs. We&rsquo;re &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://blog.segunda-mano.mx/blog/2014/07/07/postgresql-metrics-pipeline">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="SMMX Tech Blog" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-52077154-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">SMMX Tech Blog</a></h1>
+  
+    <h2>Tech advetures in SMMX</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:blog.segunda-mano.mx" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/work-with-us">Work with Us!</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Postgresql Metrics With Logstash</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-07-07T08:00:59-05:00" pubdate data-updated="true">Jul 7<span>th</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><em>by Ian Delahorne</em></p>
+
+<p>I thought I&rsquo;d share our setup at <a href="http://www.segundamano.mx">SegundaMano.mx</a>
+for extracting PostgreSQL metrics with <a href="http://www.logstash.net">Logstash</a> to
+push to graphs. We&rsquo;re planning on upgrading our database cluster from an older
+PostgreSQL version, and we want to know what potential performance bottlenecks
+we have before and after upgrading</p>
+
+<h2>Goals</h2>
+
+<p>Our goals here are to answer the questions:</p>
+
+<ul>
+<li>Which of our queries are slow?</li>
+<li>What&rsquo;s the ratio of slow queries to non-slow queries?</li>
+<li>What&rsquo;s the average query time?</li>
+</ul>
+
+
+<p>We want these in place before we do a major overhaul of our databases,
+so we can see how our upgrades perform. Graphs are always better than
+&ldquo;well it feels a lot better&rdquo;</p>
+
+<p>Our choice of tooling landed on <a href="http://logstash.net">Logstash</a>
+parsing the CSV log, extracting data to push to Statsd/Graphite and to
+Elasticsearch/Kibana via RabbitMQ. In addition to Logstash,
+other tools can extract data from the CSV log, for example
+<a href="http://dalibo.github.io/pgbadger">pgBadger</a> and PostgreSQL
+itself.</p>
+
+<p>From the CSV log, we extract the query duration of all queries and
+push this to statsd. We also fire off a counter for each query, and a
+separate for each slow query.</p>
+
+<h2>Parts involved</h2>
+
+<p>We broke this down into 4 different roles &ndash; this might change at some
+later point but it&rsquo;s a start. I drew a little picture with the various
+components &ndash; the dotted lines denote host boundaries</p>
+
+<p><img src="/images/logstash_pipeline.png"></p>
+
+<h3>Database servers</h3>
+
+<ul>
+<li>Postgres with CSV logging</li>
+<li>Logstash</li>
+<li>Statsd</li>
+</ul>
+
+
+<h3>RabbitMQ servers</h3>
+
+<ul>
+<li>RabbitMQ in a cluster</li>
+</ul>
+
+
+<h3>Graphite server</h3>
+
+<ul>
+<li>Graphite (carbon-cache, whisper, graphite-web)</li>
+</ul>
+
+
+<h3>Elasticsearch server:</h3>
+
+<ul>
+<li>Logstash indexer</li>
+<li>Elasticsearch</li>
+<li>Kibana</li>
+<li>Nginx</li>
+</ul>
+
+
+<h2>The pipeline components</h2>
+
+<h2>Logstash</h2>
+
+<p><a href="http://logstash.net">Logstash</a> is basically a Unix pipe on steroids.
+It&rsquo;s a JRuby project with a lot of input, filter, and output plugins
+hosted by Elasticsearch. It really shines when connected with
+ElasticSearch and Kibana.</p>
+
+<p>Usually what&rsquo;s done is a logstash &ldquo;agent&rdquo; instance runs on each server
+that parses the logs, mangles them into your correct format, and push
+them to a central broker. Then an &ldquo;indexer&rdquo; instance pulls them off
+the broker and indexes them into ElasticSearch. This decouples the
+instances a bit, allowing you to firewall off the ES instance from the
+servers, or use a lightweight shipper agent lacking ES support (such
+as <a href="http://beaver.readthedocs.org/en/latest/">Beaver</a>) to ship
+entries.</p>
+
+<p>As for brokers, the most common are Redis and RabbitMQ. The easiest to
+use is Redis, using a queue or a channel. Unfortunately this doesn&rsquo;t
+offer the routing possibilites of RabbitMQ, or the ability to see
+events coming over in real time with a script performing <code>tail -f</code>
+duties &ndash; with Redis you can see the firehose with <code>MONITOR</code> and that&rsquo;s it.</p>
+
+<h2>RabbitMQ</h2>
+
+<p><a href="http://www.rabbitmq.org">RabbitMQ</a> is an open source AMQP broker. We
+have a separate Vhost for logstash, and separate users for indexer and
+publisher.</p>
+
+<p>In the vhost there&rsquo;s a persistent <code>topic</code> exchange. This means that we
+can shut down either the producer or consumer without losing events on
+the floor &ndash; they get queued up until the indexer comes alive again.
+For availability we run a cluster over several hosts using a virtual
+IP with keepalived for the clients to connect to.</p>
+
+<h2>Statsd</h2>
+
+<p><a href="https://github.com/etsy/statsd/">Statsd</a> is a project from Etsy. You
+shove metrics to it (types available
+<a href="https://github.com/etsy/statsd/blob/master/docs/metric_types.md">here</a>),
+and it handles the per-timeunit bucketing, mean/std/upper90 of timers
+et c and ships data to Graphite. Logstash has this as well in the
+<a href="http://logstash.net/docs/1.4.1/filters/metrics">metrics</a> filter, but
+it doesn&rsquo;t behave as well as I&rsquo;d like.</p>
+
+<p>We use Vimeo&rsquo;s
+<a href="https://github.com/vimeo/statsdaemon">go implementation</a> instead of
+Etsy&rsquo;s NodeJS version. The main reasoning being go projects compile to
+a static binary, simplifying deploys (since we don&rsquo;t use NodeJS in
+production). I built a
+<a href="https://gist.github.com/lflux/934eff42924e276c8673">RPM specfile</a> to
+build an RPM of this.</p>
+
+<h2>Graphite</h2>
+
+<p><a href="http://graphite.readthedocs.org/">Graphite</a> is a graphing system
+comprising several parts. Carbon-cache receives the metrics and stores
+them in Whisper. Whisper is a timeseries database that doesn&rsquo;t lose resolution,
+like RRD does. Graphite-web is a Django project that handles the user
+interface and rendering.</p>
+
+<p>We use PostgreSQL as the storage backend instead of
+sqlite after reading <a href="http://obfuscurity.com/2013/12/Why-You-Shouldnt-use-SQLite-with-Graphite">this blog post</a></p>
+
+<h2>Elasticsearch / kibana</h2>
+
+<p>Logstash publishes the events into
+<a href="http://www.elasticsearch.org">ElasticSearch</a>, with one index per
+day. <a href="http://www.elasticsearch.org/overview/kibana/">Kibana</a> is a
+HTML/JS frontend to Elasticsearch for viewing the log data. The nice
+thing about Kibana is that it&rsquo;s really easy to search in the data and
+randomly play around with different queries &ndash; it starts off with all
+events and has nice breakdowns of the values of each. At my home
+company, we use Kibana to make sense of the errors coming off our app
+servers and have caught a lot of interesting bugs from randomly
+playing around with the queries.</p>
+
+<h2>Results</h2>
+
+<p>A few hours after we enabled the whole pipeline, we already could use
+the Kibana interface to spot slow queries, specifically two major
+offenders that we could clear up with one index on a table.</p>
+
+<p>Kibana slow query count:
+<img src="/images/kibana_slows.png"></p>
+
+<p>Graphite queries vs slow queries
+<img src="/images/query_count.png"></p>
+
+<p>Graphite query time
+<img src="/images/query_time.png"></p>
+
+<!-- more -->
+
+
+<h2>Configuration Details</h2>
+
+<h2>On the PostgreSQL server</h2>
+
+<h3>postgresql.conf</h3>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># Log both to syslog and CSV. A .log file will be created, but it will
+</span><span class='line'>be empty.
+</span><span class='line'>log_destination = 'syslog,csvlog'
+</span><span class='line'>log_filename = 'postgresql-%Y-%m-%d.log'
+</span><span class='line'># Log duration of all statements. 
+</span><span class='line'># Log full statement of any that takes  more than 2 seconds.
+</span><span class='line'>log_duration = on
+</span><span class='line'>log_min_duration_statement = 2000
+</span><span class='line'>log_statement = 'none'
+</span><span class='line'># If you log in a locale such as es_MX, logstash might not parse the CSV correctly
+</span><span class='line'>lc_messages = 'C'</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Logstash shipper</h3>
+
+<figure class='code'><figcaption><span>logstash-postgresql-shipper.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>input {
+</span><span class='line'>        file {
+</span><span class='line'>                "path" =&gt; "/path/to/pg_log/*.csv"
+</span><span class='line'>                "sincedb_path" =&gt; "/path/to/pg_log/sincedb_pgsql"
+</span><span class='line'># fix up multiple lines in log output into one entry              
+</span><span class='line'>           codec =&gt; multiline {
+</span><span class='line'>                   pattern =&gt; "^%{TIMESTAMP_ISO8601}.*"
+</span><span class='line'>                   what =&gt; previous
+</span><span class='line'>                   negate =&gt; true
+</span><span class='line'>           }
+</span><span class='line'>        }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>filter {
+</span><span class='line'># See http://www.postgresql.org/docs/9.3/interactive/runtime-config-logging.html#RUNTIME-CONFIG-LOGGING-CSVLOG
+</span><span class='line'>        csv {
+</span><span class='line'> columns =&gt; [  "log_time", "user_name", "database_name", "process_id", "connection_from", "session_id", "session_line_num", "command_tag", "session_start_time", "virtual_transaction_id", "transaction_id", "error_severity", "sql_state_code", "sql_message", "detail", "hint", "internal_query", "internal_query_pos", "context", "query", "query_pos", "location"]
+</span><span class='line'>        }
+</span><span class='line'>  mutate {
+</span><span class='line'>         gsub =&gt; [ "sql_message", "[\n\t]+", " "]
+</span><span class='line'>  }
+</span><span class='line'># use timestamp from log file  
+</span><span class='line'>  date {
+</span><span class='line'>        #2014-05-22 17:02:35.069 CDT
+</span><span class='line'>        match =&gt; ["log_time", "YYYY-MM-dd HH:mm:ss.SSS z"]
+</span><span class='line'>}
+</span><span class='line'>  grok {
+</span><span class='line'>    match =&gt; ["sql_message", "duration: %{DATA:duration:int} ms"]
+</span><span class='line'>    tag_on_failure =&gt; []
+</span><span class='line'>        add_tag =&gt; "sql_message"
+</span><span class='line'>  }
+</span><span class='line'># See postgres configuration - a message with 'statement: ' is a slow query
+</span><span class='line'>  grok  {
+</span><span class='line'>        match =&gt;["sql_message", "statement: %{GREEDYDATA:statement}"]
+</span><span class='line'>        tag_on_failure =&gt; []
+</span><span class='line'>        add_tag =&gt; "slow_statement"
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>output {
+</span><span class='line'># Increase hitcounter when we see a slow statement
+</span><span class='line'>  if "slow_statement" in [tags] {
+</span><span class='line'>        statsd {
+</span><span class='line'>                increment =&gt; "postgresql.slow_queries"
+</span><span class='line'>        }
+</span><span class='line'>  }
+</span><span class='line'>  # increase hitcounter for all queries
+</span><span class='line'>  # send timing metrics for queries
+</span><span class='line'>  if "sql_message" in [tags] {
+</span><span class='line'>          statsd {
+</span><span class='line'>                timing =&gt; {"query_duration" =&gt; "%{duration}"}
+</span><span class='line'>                increment =&gt; "postgresql.queries"
+</span><span class='line'>          }
+</span><span class='line'>  }
+</span><span class='line'>  # Ship off all to rabbitmq
+</span><span class='line'>  rabbitmq {
+</span><span class='line'>    'durable' =&gt; true
+</span><span class='line'>    'exchange' =&gt; 'logstash'
+</span><span class='line'>    'exchange_type' =&gt; 'topic'
+</span><span class='line'>    'host' =&gt;  "server"
+</span><span class='line'>  #note - replace type and host manually since as of writing this isn't replaced like it should be
+</span><span class='line'>    'key' =&gt; 'logstash.%{type}.%{host}'
+</span><span class='line'>    'password' =&gt; "password"
+</span><span class='line'>    'persistent' =&gt; true
+</span><span class='line'>    'user' =&gt; 'shipper'
+</span><span class='line'>    'vhost' =&gt; 'logstash'
+</span><span class='line'>    'workers' =&gt; 4
+</span><span class='line'>  }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Statsdaemon</h3>
+
+<p>Not much to this here &ndash; just run statsdaemon and edit the configuration file <code>/etc/statsdaemon.ini</code> and set the correct graphite host.</p>
+
+<h2>RabbitMQ</h2>
+
+<p>Set up rabbitmq with a Vhost for logstash, create users indexer and
+shipper that can read and write to the logstash vhost. Before starting
+the shipper, start the indexer which will automatically create the
+binding from the exchange to the queue.</p>
+
+<h2>ElasticSearch/Indexers</h2>
+
+<h3>ElasticSearch</h3>
+
+<p>Install elasticsearch with a fair bit of storage.</p>
+
+<figure class='code'><figcaption><span>/etc/elasticsearch/elasticsearch.yml</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">cluster.name</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">elasticsearch</span>
+</span><span class='line'><span class="l-Scalar-Plain">path.conf</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">/etc/elasticsearch</span>
+</span><span class='line'><span class="l-Scalar-Plain">path.data</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">/opt/logs/elasticsearch/data</span>
+</span><span class='line'><span class="l-Scalar-Plain">path.logs</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">/opt/logs/elasticsearch/logs</span>
+</span><span class='line'><span class="l-Scalar-Plain">discovery.zen.minimum_master_nodes</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">1</span>
+</span><span class='line'><span class="l-Scalar-Plain">discovery.zen.ping.multicast.enabled</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">true</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Logstash Indexer</h3>
+
+<p>Configure to pull events off RabbitMQ and index them into Elasticsearch</p>
+
+<figure class='code'><figcaption><span>/opt/logstash/server/etc/conf.d/logstash.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>input {
+</span><span class='line'>
+</span><span class='line'>      rabbitmq {
+</span><span class='line'>        'auto_delete' =&gt; 'false'
+</span><span class='line'>        'codec' =&gt; 'json'
+</span><span class='line'>        'debug' =&gt; true
+</span><span class='line'>        'durable' =&gt; true
+</span><span class='line'>        'exchange' =&gt; 'logstash'
+</span><span class='line'>        'exclusive' =&gt; false
+</span><span class='line'>        'host' =&gt; 'host'
+</span><span class='line'>        'key' =&gt; 'logstash.#'
+</span><span class='line'>        'password' =&gt; 'passwd'
+</span><span class='line'>        'queue' =&gt; 'logstash-indexer'
+</span><span class='line'>        'user' =&gt; 'indexer'
+</span><span class='line'>        'vhost' =&gt; 'logstash'
+</span><span class='line'>      }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>output {
+</span><span class='line'>  elasticsearch { host =&gt; "host"
+</span><span class='line'>        cluster =&gt; "logstash"
+</span><span class='line'>        protocol =&gt; "http"
+</span><span class='line'>  }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Kibana</h3>
+
+<p>Install kibana from <a href="https://github.com/elasticsearch/kibana">git master</a> into the directory
+where you want it served from.</p>
+
+<h3>Nginx</h3>
+
+<p>Set up Nginx to show kibana HTML and to proxy requests to Elasticsearch</p>
+
+<figure class='code'><figcaption><span>/etc/nginx/sites-enabled/kibana</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+</pre></td><td class='code'><pre><code class='nginx'><span class='line'><span class="k">server</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kn">listen</span>                <span class="n">host</span><span class="p">:</span><span class="mi">80</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kn">server_name</span>           <span class="s">host</span><span class="p">;</span>
+</span><span class='line'>  <span class="kn">access_log</span>            <span class="s">/var/log/nginx/kibana.log</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kn">location</span> <span class="s">/</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">root</span>  <span class="s">/opt/kibana/current/src</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">index</span>  <span class="s">index.html</span>  <span class="s">index.htm</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">location</span> <span class="p">~</span> <span class="sr">^/_aliases$</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">proxy_pass</span> <span class="s">http://127.0.0.1:9200</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">proxy_read_timeout</span> <span class="mi">90</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="kn">location</span> <span class="p">~</span> <span class="sr">^/.*/_aliases$</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">proxy_pass</span> <span class="s">http://127.0.0.1:9200</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">proxy_read_timeout</span> <span class="mi">90</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="kn">location</span> <span class="p">~</span> <span class="sr">^/_nodes$</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">proxy_pass</span> <span class="s">http://127.0.0.1:9200</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">proxy_read_timeout</span> <span class="mi">90</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="kn">location</span> <span class="p">~</span> <span class="sr">^/.*/_search$</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">proxy_pass</span> <span class="s">http://127.0.0.1:9200</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">proxy_read_timeout</span> <span class="mi">90</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="kn">location</span> <span class="p">~</span> <span class="sr">^/.*/_mapping$</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">proxy_pass</span> <span class="s">http://127.0.0.1:9200</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">proxy_read_timeout</span> <span class="mi">90</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="kn">location</span> <span class="p">~</span> <span class="sr">^/_cluster/health$</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">proxy_pass</span> <span class="s">http://127.0.0.1:9200</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">proxy_read_timeout</span> <span class="mi">90</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1"># password protected end points</span>
+</span><span class='line'>  <span class="kn">location</span> <span class="p">~</span> <span class="sr">^/kibana-int/dashboard/.*$</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">proxy_pass</span> <span class="s">http://127.0.0.1:9200</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">proxy_read_timeout</span> <span class="mi">90</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="kn">location</span> <span class="p">~</span> <span class="sr">^/kibana-int/temp.*$</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">proxy_pass</span> <span class="s">http://127.0.0.1:9200</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">proxy_read_timeout</span> <span class="mi">90</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">SMMX Tech Team</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-07-07T08:00:59-05:00" pubdate data-updated="true">Jul 7<span>th</span>, 2014</time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://blog.segunda-mano.mx/blog/2014/07/07/postgresql-metrics-pipeline/" data-via="" data-counturl="http://blog.segunda-mano.mx/blog/2014/07/07/postgresql-metrics-pipeline/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/06/05/test-post/" title="Previous Post: Test Post">&laquo; Test Post</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/07/07/postgresql-metrics-pipeline/">Postgresql Metrics With Logstash</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/06/05/test-post/">Test Post</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - SMMX Tech Team -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
