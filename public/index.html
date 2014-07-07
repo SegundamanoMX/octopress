@@ -9,8 +9,9 @@
   <meta name="author" content="SMMX Tech Team">
 
   
-  <meta name="description" content="Some blah
-">
+  <meta name="description" content="by Ian Delahorne I thought I&rsquo;d share our setup at SegundaMano.mx
+for extracting PostgreSQL metrics with Logstash to
+push to graphs. We&rsquo;re &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -32,6 +33,18 @@
 <link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 
   
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-52077154-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
 
 </head>
 
@@ -67,6 +80,213 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2014/07/07/postgresql-metrics-pipeline/">Postgresql Metrics With Logstash</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-07-07T08:00:59-05:00" pubdate data-updated="true">Jul 7<span>th</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><em>by Ian Delahorne</em></p>
+
+<p>I thought I&rsquo;d share our setup at <a href="http://www.segundamano.mx">SegundaMano.mx</a>
+for extracting PostgreSQL metrics with <a href="http://www.logstash.net">Logstash</a> to
+push to graphs. We&rsquo;re planning on upgrading our database cluster from an older
+PostgreSQL version, and we want to know what potential performance bottlenecks
+we have before and after upgrading</p>
+
+<h2>Goals</h2>
+
+<p>Our goals here are to answer the questions:</p>
+
+<ul>
+<li>Which of our queries are slow?</li>
+<li>What&rsquo;s the ratio of slow queries to non-slow queries?</li>
+<li>What&rsquo;s the average query time?</li>
+</ul>
+
+
+<p>We want these in place before we do a major overhaul of our databases,
+so we can see how our upgrades perform. Graphs are always better than
+&ldquo;well it feels a lot better&rdquo;</p>
+
+<p>Our choice of tooling landed on <a href="http://logstash.net">Logstash</a>
+parsing the CSV log, extracting data to push to Statsd/Graphite and to
+Elasticsearch/Kibana via RabbitMQ. In addition to Logstash,
+other tools can extract data from the CSV log, for example
+<a href="http://dalibo.github.io/pgbadger">pgBadger</a> and PostgreSQL
+itself.</p>
+
+<p>From the CSV log, we extract the query duration of all queries and
+push this to statsd. We also fire off a counter for each query, and a
+separate for each slow query.</p>
+
+<h2>Parts involved</h2>
+
+<p>We broke this down into 4 different roles &ndash; this might change at some
+later point but it&rsquo;s a start. I drew a little picture with the various
+components &ndash; the dotted lines denote host boundaries</p>
+
+<p><img src="/images/logstash_pipeline.png"></p>
+
+<h3>Database servers</h3>
+
+<ul>
+<li>Postgres with CSV logging</li>
+<li>Logstash</li>
+<li>Statsd</li>
+</ul>
+
+
+<h3>RabbitMQ servers</h3>
+
+<ul>
+<li>RabbitMQ in a cluster</li>
+</ul>
+
+
+<h3>Graphite server</h3>
+
+<ul>
+<li>Graphite (carbon-cache, whisper, graphite-web)</li>
+</ul>
+
+
+<h3>Elasticsearch server:</h3>
+
+<ul>
+<li>Logstash indexer</li>
+<li>Elasticsearch</li>
+<li>Kibana</li>
+<li>Nginx</li>
+</ul>
+
+
+<h2>The pipeline components</h2>
+
+<h2>Logstash</h2>
+
+<p><a href="http://logstash.net">Logstash</a> is basically a Unix pipe on steroids.
+It&rsquo;s a JRuby project with a lot of input, filter, and output plugins
+hosted by Elasticsearch. It really shines when connected with
+ElasticSearch and Kibana.</p>
+
+<p>Usually what&rsquo;s done is a logstash &ldquo;agent&rdquo; instance runs on each server
+that parses the logs, mangles them into your correct format, and push
+them to a central broker. Then an &ldquo;indexer&rdquo; instance pulls them off
+the broker and indexes them into ElasticSearch. This decouples the
+instances a bit, allowing you to firewall off the ES instance from the
+servers, or use a lightweight shipper agent lacking ES support (such
+as <a href="http://beaver.readthedocs.org/en/latest/">Beaver</a>) to ship
+entries.</p>
+
+<p>As for brokers, the most common are Redis and RabbitMQ. The easiest to
+use is Redis, using a queue or a channel. Unfortunately this doesn&rsquo;t
+offer the routing possibilites of RabbitMQ, or the ability to see
+events coming over in real time with a script performing <code>tail -f</code>
+duties &ndash; with Redis you can see the firehose with <code>MONITOR</code> and that&rsquo;s it.</p>
+
+<h2>RabbitMQ</h2>
+
+<p><a href="http://www.rabbitmq.org">RabbitMQ</a> is an open source AMQP broker. We
+have a separate Vhost for logstash, and separate users for indexer and
+publisher.</p>
+
+<p>In the vhost there&rsquo;s a persistent <code>topic</code> exchange. This means that we
+can shut down either the producer or consumer without losing events on
+the floor &ndash; they get queued up until the indexer comes alive again.
+For availability we run a cluster over several hosts using a virtual
+IP with keepalived for the clients to connect to.</p>
+
+<h2>Statsd</h2>
+
+<p><a href="https://github.com/etsy/statsd/">Statsd</a> is a project from Etsy. You
+shove metrics to it (types available
+<a href="https://github.com/etsy/statsd/blob/master/docs/metric_types.md">here</a>),
+and it handles the per-timeunit bucketing, mean/std/upper90 of timers
+et c and ships data to Graphite. Logstash has this as well in the
+<a href="http://logstash.net/docs/1.4.1/filters/metrics">metrics</a> filter, but
+it doesn&rsquo;t behave as well as I&rsquo;d like.</p>
+
+<p>We use Vimeo&rsquo;s
+<a href="https://github.com/vimeo/statsdaemon">go implementation</a> instead of
+Etsy&rsquo;s NodeJS version. The main reasoning being go projects compile to
+a static binary, simplifying deploys (since we don&rsquo;t use NodeJS in
+production). I built a
+<a href="https://gist.github.com/lflux/934eff42924e276c8673">RPM specfile</a> to
+build an RPM of this.</p>
+
+<h2>Graphite</h2>
+
+<p><a href="http://graphite.readthedocs.org/">Graphite</a> is a graphing system
+comprising several parts. Carbon-cache receives the metrics and stores
+them in Whisper. Whisper is a timeseries database that doesn&rsquo;t lose resolution,
+like RRD does. Graphite-web is a Django project that handles the user
+interface and rendering.</p>
+
+<p>We use PostgreSQL as the storage backend instead of
+sqlite after reading <a href="http://obfuscurity.com/2013/12/Why-You-Shouldnt-use-SQLite-with-Graphite">this blog post</a></p>
+
+<h2>Elasticsearch / kibana</h2>
+
+<p>Logstash publishes the events into
+<a href="http://www.elasticsearch.org">ElasticSearch</a>, with one index per
+day. <a href="http://www.elasticsearch.org/overview/kibana/">Kibana</a> is a
+HTML/JS frontend to Elasticsearch for viewing the log data. The nice
+thing about Kibana is that it&rsquo;s really easy to search in the data and
+randomly play around with different queries &ndash; it starts off with all
+events and has nice breakdowns of the values of each. At my home
+company, we use Kibana to make sense of the errors coming off our app
+servers and have caught a lot of interesting bugs from randomly
+playing around with the queries.</p>
+
+<h2>Results</h2>
+
+<p>A few hours after we enabled the whole pipeline, we already could use
+the Kibana interface to spot slow queries, specifically two major
+offenders that we could clear up with one index on a table.</p>
+
+<p>Kibana slow query count:
+<img src="/images/kibana_slows.png"></p>
+
+<p>Graphite queries vs slow queries
+<img src="/images/query_count.png"></p>
+
+<p>Graphite query time
+<img src="/images/query_time.png"></p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2014/07/07/postgresql-metrics-pipeline/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -115,6 +335,10 @@
     <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/07/07/postgresql-metrics-pipeline/">Postgresql Metrics With Logstash</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2014/06/05/test-post/">Test Post</a>
