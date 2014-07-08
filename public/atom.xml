@@ -4,7 +4,7 @@
   <title><![CDATA[SMMX Tech Blog]]></title>
   <link href="http://blog.segunda-mano.mx/atom.xml" rel="self"/>
   <link href="http://blog.segunda-mano.mx/"/>
-  <updated>2014-07-08T08:22:16-05:00</updated>
+  <updated>2014-07-08T14:01:16-05:00</updated>
   <id>http://blog.segunda-mano.mx/</id>
   <author>
     <name><![CDATA[SMMX Tech Team]]></name>
@@ -548,15 +548,6 @@ where you want it served from.</p>
 </span><span class='line'><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Test Post]]></title>
-    <link href="http://blog.segunda-mano.mx/blog/2014/06/05/test-post/"/>
-    <updated>2014-06-05T23:15:24-05:00</updated>
-    <id>http://blog.segunda-mano.mx/blog/2014/06/05/test-post</id>
-    <content type="html"><![CDATA[<p>Some blah</p>
 ]]></content>
   </entry>
   
