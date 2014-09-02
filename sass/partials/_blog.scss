@@ -105,7 +105,7 @@ article + article {
     @extend .serif;
     @include transition(background-color .5s);
     &:hover {
-      background: $link-color-hover;
+      background: #F16622;
       text-shadow: none;
       color: $main-bg;
     }
