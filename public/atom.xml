@@ -4,7 +4,7 @@
   <title><![CDATA[SMMX Tech Blog]]></title>
   <link href="http://blog.segunda-mano.mx/atom.xml" rel="self"/>
   <link href="http://blog.segunda-mano.mx/"/>
-  <updated>2014-07-08T14:01:16-05:00</updated>
+  <updated>2014-09-02T14:33:52-05:00</updated>
   <id>http://blog.segunda-mano.mx/</id>
   <author>
     <name><![CDATA[SMMX Tech Team]]></name>
@@ -54,9 +54,9 @@ separate for each slow query.</p>
 
 <h2>Parts involved</h2>
 
-<p>We broke this down into 4 different roles &ndash; this might change at some
+<p>We broke this down into 4 different roles - this might change at some
 later point but it&rsquo;s a start. I drew a little picture with the various
-components &ndash; the dotted lines denote host boundaries</p>
+components - the dotted lines denote host boundaries</p>
 
 <p><img src="http://blog.segunda-mano.mx/images/logstash_pipeline.png"></p>
 
@@ -115,7 +115,7 @@ entries.</p>
 use is Redis, using a queue or a channel. Unfortunately this doesn&rsquo;t
 offer the routing possibilites of RabbitMQ, or the ability to see
 events coming over in real time with a script performing <code>tail -f</code>
-duties &ndash; with Redis you can see the firehose with <code>MONITOR</code> and that&rsquo;s it.</p>
+duties - with Redis you can see the firehose with <code>MONITOR</code> and that&rsquo;s it.</p>
 
 <h2>RabbitMQ</h2>
 
@@ -125,7 +125,7 @@ publisher.</p>
 
 <p>In the vhost there&rsquo;s a persistent <code>topic</code> exchange. This means that we
 can shut down either the producer or consumer without losing events on
-the floor &ndash; they get queued up until the indexer comes alive again.
+the floor - they get queued up until the indexer comes alive again.
 For availability we run a cluster over several hosts using a virtual
 IP with keepalived for the clients to connect to.</p>
 
@@ -165,7 +165,7 @@ sqlite after reading <a href="http://obfuscurity.com/2013/12/Why-You-Shouldnt-us
 day. <a href="http://www.elasticsearch.org/overview/kibana/">Kibana</a> is a
 HTML/JS frontend to Elasticsearch for viewing the log data. The nice
 thing about Kibana is that it&rsquo;s really easy to search in the data and
-randomly play around with different queries &ndash; it starts off with all
+randomly play around with different queries - it starts off with all
 events and has nice breakdowns of the values of each. At my home
 company, we use Kibana to make sense of the errors coming off our app
 servers and have caught a lot of interesting bugs from randomly
@@ -361,7 +361,7 @@ offenders that we could clear up with one index on a table.</p>
 
 <h3>Statsdaemon</h3>
 
-<p>Not much to this here &ndash; just run statsdaemon and edit the configuration file <code>/etc/statsdaemon.ini</code> and set the correct graphite host.</p>
+<p>Not much to this here - just run statsdaemon and edit the configuration file <code>/etc/statsdaemon.ini</code> and set the correct graphite host.</p>
 
 <h2>RabbitMQ</h2>
 
