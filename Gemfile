@@ -18,3 +18,4 @@ end
 
 gem 'sinatra', '~> 1.4.2'
 gem 'stringex', '~> 1.4.0'
+gem 'unicorn'
