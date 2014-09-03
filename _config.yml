@@ -2,12 +2,12 @@
 #      Main Configs       #
 # ----------------------- #
 
-url: http://blog.segunda-mano.mx
-title: SMMX Tech Blog
-subtitle: Tech adventures in SMMX
-author: SMMX Tech Team
+url: http://backstage.segundamano.mx
+title: Segundamano's Backstage
+subtitle: Tech adventures in Segundamano.mx
+author: Segundamano.mx Tech Team
 simple_search: https://www.google.com/search
-description:
+description: This is a blog about technology brought to you by the awesome tech team @Segundamano.mx
 
 # Default date format is "ordinal" (resulting in "July 22nd 2007")
 # You can customize the format as defined in
@@ -74,7 +74,7 @@ twitter_user:
 twitter_tweet_button: true
 
 # Google +1
-google_plus_one: false
+google_plus_one: true
 google_plus_one_size: medium
 
 # Google Plus Profile
@@ -98,4 +98,4 @@ disqus_show_comment_count: false
 google_analytics_tracking_id: UA-52077154-1
 
 # Facebook Like
-facebook_like: false
+facebook_like: true

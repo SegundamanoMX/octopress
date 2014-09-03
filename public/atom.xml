@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[SMMX Tech Blog]]></title>
-  <link href="http://blog.segunda-mano.mx/atom.xml" rel="self"/>
-  <link href="http://blog.segunda-mano.mx/"/>
-  <updated>2014-09-02T14:58:21-05:00</updated>
-  <id>http://blog.segunda-mano.mx/</id>
+  <title><![CDATA[Segundamano.mx Backstage]]></title>
+  <link href="http://backstage.segundamano.mx/atom.xml" rel="self"/>
+  <link href="http://backstage.segundamano.mx/"/>
+  <updated>2014-09-03T15:36:47-05:00</updated>
+  <id>http://backstage.segundamano.mx/</id>
   <author>
-    <name><![CDATA[SMMX Tech Team]]></name>
+    <name><![CDATA[Segundamano.mx Tech Team]]></name>
     
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
@@ -15,12 +15,10 @@
   
   <entry>
     <title type="html"><![CDATA[Postgresql Metrics With Logstash]]></title>
-    <link href="http://blog.segunda-mano.mx/blog/2014/07/07/postgresql-metrics-pipeline/"/>
+    <link href="http://backstage.segundamano.mx/blog/2014/07/07/postgresql-metrics-pipeline/"/>
     <updated>2014-07-07T08:00:59-05:00</updated>
-    <id>http://blog.segunda-mano.mx/blog/2014/07/07/postgresql-metrics-pipeline</id>
-    <content type="html"><![CDATA[<p><em>by Ian Delahorne</em></p>
-
-<p>I thought I&rsquo;d share our setup at <a href="http://www.segundamano.mx">SegundaMano.mx</a>
+    <id>http://backstage.segundamano.mx/blog/2014/07/07/postgresql-metrics-pipeline</id>
+    <content type="html"><![CDATA[<p>I thought I&rsquo;d share our setup at <a href="http://www.segundamano.mx">SegundaMano.mx</a>
 for extracting PostgreSQL metrics with <a href="http://www.logstash.net">Logstash</a> to
 push to graphs. We&rsquo;re planning on upgrading our database cluster from an older
 PostgreSQL version, and we want to know what potential performance bottlenecks
@@ -58,7 +56,7 @@ separate for each slow query.</p>
 later point but it&rsquo;s a start. I drew a little picture with the various
 components - the dotted lines denote host boundaries</p>
 
-<p><img src="http://blog.segunda-mano.mx/images/logstash_pipeline.png"></p>
+<p><img src="http://backstage.segundamano.mx/images/logstash_pipeline.png"></p>
 
 <h3>Database servers</h3>
 
@@ -178,13 +176,13 @@ the Kibana interface to spot slow queries, specifically two major
 offenders that we could clear up with one index on a table.</p>
 
 <p>Kibana slow query count:
-<img src="http://blog.segunda-mano.mx/images/kibana_slows.png"></p>
+<img src="http://backstage.segundamano.mx/images/kibana_slows.png"></p>
 
 <p>Graphite queries vs slow queries
-<img src="http://blog.segunda-mano.mx/images/query_count.png"></p>
+<img src="http://backstage.segundamano.mx/images/query_count.png"></p>
 
 <p>Graphite query time
-<img src="http://blog.segunda-mano.mx/images/query_time.png"></p>
+<img src="http://backstage.segundamano.mx/images/query_time.png"></p>
 
 <!-- more -->
 

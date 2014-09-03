@@ -1,4 +1,4 @@
 User-agent: *
 Disallow: 
 
-Sitemap: http://blog.segunda-mano.mx/sitemap.xml 
+Sitemap: http://backstage.segundamano.mx/sitemap.xml 

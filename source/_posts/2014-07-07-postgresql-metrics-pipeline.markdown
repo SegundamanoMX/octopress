@@ -3,9 +3,12 @@ layout: post
 title: "Postgresql Metrics with Logstash"
 date: 2014-07-07 08:00:59 -0500
 comments: true
-categories: 
+author: Ian Delahorne
+categories:
+- PostgreSQL
+- Metrics
+- Logstash
 ---
-*by Ian Delahorne*
 
 I thought I'd share our setup at [SegundaMano.mx](http://www.segundamano.mx)
 for extracting PostgreSQL metrics with [Logstash](http://www.logstash.net) to

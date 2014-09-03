@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Logstash | Segundamano.mx Backstage]]></title>
+  <link href="http://backstage.segundamano.mx/blog/categories/logstash/atom.xml" rel="self"/>
+  <link href="http://backstage.segundamano.mx/"/>
+  <updated>2014-09-03T15:36:47-05:00</updated>
+  <id>http://backstage.segundamano.mx/</id>
+  <author>
+    <name><![CDATA[Segundamano.mx Tech Team]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Postgresql Metrics With Logstash]]></title>
+    <link href="http://backstage.segundamano.mx/blog/2014/07/07/postgresql-metrics-pipeline/"/>
+    <updated>2014-07-07T08:00:59-05:00</updated>
+    <id>http://backstage.segundamano.mx/blog/2014/07/07/postgresql-metrics-pipeline</id>
+    <content type="html"><![CDATA[<p>I thought I&rsquo;d share our setup at <a href="http://www.segundamano.mx">SegundaMano.mx</a>
+for extracting PostgreSQL metrics with <a href="http://www.logstash.net">Logstash</a> to
+push to graphs. We&rsquo;re planning on upgrading our database cluster from an older
+PostgreSQL version, and we want to know what potential performance bottlenecks
+we have before and after upgrading</p>
+
+<h2>Goals</h2>
+
+<p>Our goals here are to answer the questions:</p>
+
+<ul>
+<li>Which of our queries are slow?</li>
+<li>What&rsquo;s the ratio of slow queries to non-slow queries?</li>
+<li>What&rsquo;s the average query time?</li>
+</ul>
+
+
+<p>We want these in place before we do a major overhaul of our databases,
+so we can see how our upgrades perform. Graphs are always better than
+&ldquo;well it feels a lot better&rdquo;</p>
+
+<p>Our choice of tooling landed on <a href="http://logstash.net">Logstash</a>
+parsing the CSV log, extracting data to push to Statsd/Graphite and to
+Elasticsearch/Kibana via RabbitMQ. In addition to Logstash,
+other tools can extract data from the CSV log, for example
+<a href="http://dalibo.github.io/pgbadger">pgBadger</a> and PostgreSQL
+itself.</p>
+
+<p>From the CSV log, we extract the query duration of all queries and
+push this to statsd. We also fire off a counter for each query, and a
+separate for each slow query.</p>
+
+<h2>Parts involved</h2>
+
+<p>We broke this down into 4 different roles - this might change at some
+later point but it&rsquo;s a start. I drew a little picture with the various
+components - the dotted lines denote host boundaries</p>
+
+<p><img src="/images/logstash_pipeline.png"></p>
+
+<h3>Database servers</h3>
+
+<ul>
+<li>Postgres with CSV logging</li>
+<li>Logstash</li>
+<li>Statsd</li>
+</ul>
+
+
+<h3>RabbitMQ servers</h3>
+
+<ul>
+<li>RabbitMQ in a cluster</li>
+</ul>
+
+
+<h3>Graphite server</h3>
+
+<ul>
+<li>Graphite (carbon-cache, whisper, graphite-web)</li>
+</ul>
+
+
+<h3>Elasticsearch server:</h3>
+
+<ul>
+<li>Logstash indexer</li>
+<li>Elasticsearch</li>
+<li>Kibana</li>
+<li>Nginx</li>
+</ul>
+
+
+<h2>The pipeline components</h2>
+
+<h2>Logstash</h2>
+
+<p><a href="http://logstash.net">Logstash</a> is basically a Unix pipe on steroids.
+It&rsquo;s a JRuby project with a lot of input, filter, and output plugins
+hosted by Elasticsearch. It really shines when connected with
+ElasticSearch and Kibana.</p>
+
+<p>Usually what&rsquo;s done is a logstash &ldquo;agent&rdquo; instance runs on each server
+that parses the logs, mangles them into your correct format, and push
+them to a central broker. Then an &ldquo;indexer&rdquo; instance pulls them off
+the broker and indexes them into ElasticSearch. This decouples the
+instances a bit, allowing you to firewall off the ES instance from the
+servers, or use a lightweight shipper agent lacking ES support (such
+as <a href="http://beaver.readthedocs.org/en/latest/">Beaver</a>) to ship
+entries.</p>
+
+<p>As for brokers, the most common are Redis and RabbitMQ. The easiest to
+use is Redis, using a queue or a channel. Unfortunately this doesn&rsquo;t
+offer the routing possibilites of RabbitMQ, or the ability to see
+events coming over in real time with a script performing <code>tail -f</code>
+duties - with Redis you can see the firehose with <code>MONITOR</code> and that&rsquo;s it.</p>
+
+<h2>RabbitMQ</h2>
+
+<p><a href="http://www.rabbitmq.org">RabbitMQ</a> is an open source AMQP broker. We
+have a separate Vhost for logstash, and separate users for indexer and
+publisher.</p>
+
+<p>In the vhost there&rsquo;s a persistent <code>topic</code> exchange. This means that we
+can shut down either the producer or consumer without losing events on
+the floor - they get queued up until the indexer comes alive again.
+For availability we run a cluster over several hosts using a virtual
+IP with keepalived for the clients to connect to.</p>
+
+<h2>Statsd</h2>
+
+<p><a href="https://github.com/etsy/statsd/">Statsd</a> is a project from Etsy. You
+shove metrics to it (types available
+<a href="https://github.com/etsy/statsd/blob/master/docs/metric_types.md">here</a>),
+and it handles the per-timeunit bucketing, mean/std/upper90 of timers
+et c and ships data to Graphite. Logstash has this as well in the
+<a href="http://logstash.net/docs/1.4.1/filters/metrics">metrics</a> filter, but
+it doesn&rsquo;t behave as well as I&rsquo;d like.</p>
+
+<p>We use Vimeo&rsquo;s
+<a href="https://github.com/vimeo/statsdaemon">go implementation</a> instead of
+Etsy&rsquo;s NodeJS version. The main reasoning being go projects compile to
+a static binary, simplifying deploys (since we don&rsquo;t use NodeJS in
+production). I built a
+<a href="https://gist.github.com/lflux/934eff42924e276c8673">RPM specfile</a> to
+build an RPM of this.</p>
+
+<h2>Graphite</h2>
+
+<p><a href="http://graphite.readthedocs.org/">Graphite</a> is a graphing system
+comprising several parts. Carbon-cache receives the metrics and stores
+them in Whisper. Whisper is a timeseries database that doesn&rsquo;t lose resolution,
+like RRD does. Graphite-web is a Django project that handles the user
+interface and rendering.</p>
+
+<p>We use PostgreSQL as the storage backend instead of
+sqlite after reading <a href="http://obfuscurity.com/2013/12/Why-You-Shouldnt-use-SQLite-with-Graphite">this blog post</a></p>
+
+<h2>Elasticsearch / kibana</h2>
+
+<p>Logstash publishes the events into
+<a href="http://www.elasticsearch.org">ElasticSearch</a>, with one index per
+day. <a href="http://www.elasticsearch.org/overview/kibana/">Kibana</a> is a
+HTML/JS frontend to Elasticsearch for viewing the log data. The nice
+thing about Kibana is that it&rsquo;s really easy to search in the data and
+randomly play around with different queries - it starts off with all
+events and has nice breakdowns of the values of each. At my home
+company, we use Kibana to make sense of the errors coming off our app
+servers and have caught a lot of interesting bugs from randomly
+playing around with the queries.</p>
+
+<h2>Results</h2>
+
+<p>A few hours after we enabled the whole pipeline, we already could use
+the Kibana interface to spot slow queries, specifically two major
+offenders that we could clear up with one index on a table.</p>
+
+<p>Kibana slow query count:
+<img src="/images/kibana_slows.png"></p>
+
+<p>Graphite queries vs slow queries
+<img src="/images/query_count.png"></p>
+
+<p>Graphite query time
+<img src="/images/query_time.png"></p>
+
+<!-- more -->
+
+
+<h2>Configuration Details</h2>
+
+<h2>On the PostgreSQL server</h2>
+
+<h3>postgresql.conf</h3>
+
+<pre><code># Log both to syslog and CSV. A .log file will be created, but it will
+be empty.
+log_destination = 'syslog,csvlog'
+log_filename = 'postgresql-%Y-%m-%d.log'
+# Log duration of all statements. 
+# Log full statement of any that takes  more than 2 seconds.
+log_duration = on
+log_min_duration_statement = 2000
+log_statement = 'none'
+# If you log in a locale such as es_MX, logstash might not parse the CSV correctly
+lc_messages = 'C'
+</code></pre>
+
+<h3>Logstash shipper</h3>
+
+<pre><code class="plain logstash-postgresql-shipper.conf">input {
+        file {
+                "path" =&gt; "/path/to/pg_log/*.csv"
+                "sincedb_path" =&gt; "/path/to/pg_log/sincedb_pgsql"
+# fix up multiple lines in log output into one entry                
+           codec =&gt; multiline {
+                   pattern =&gt; "^%{TIMESTAMP_ISO8601}.*"
+                   what =&gt; previous
+                   negate =&gt; true
+           }
+        }
+}
+
+filter {
+# See http://www.postgresql.org/docs/9.3/interactive/runtime-config-logging.html#RUNTIME-CONFIG-LOGGING-CSVLOG
+        csv {
+ columns =&gt; [  "log_time", "user_name", "database_name", "process_id", "connection_from", "session_id", "session_line_num", "command_tag", "session_start_time", "virtual_transaction_id", "transaction_id", "error_severity", "sql_state_code", "sql_message", "detail", "hint", "internal_query", "internal_query_pos", "context", "query", "query_pos", "location"]
+        }
+  mutate {
+         gsub =&gt; [ "sql_message", "[\n\t]+", " "]
+  }
+# use timestamp from log file    
+  date {
+        #2014-05-22 17:02:35.069 CDT
+        match =&gt; ["log_time", "YYYY-MM-dd HH:mm:ss.SSS z"]
+}
+  grok {
+    match =&gt; ["sql_message", "duration: %{DATA:duration:int} ms"]
+    tag_on_failure =&gt; []
+        add_tag =&gt; "sql_message"
+  }
+# See postgres configuration - a message with 'statement: ' is a slow query
+  grok  {
+        match =&gt;["sql_message", "statement: %{GREEDYDATA:statement}"]
+        tag_on_failure =&gt; []
+        add_tag =&gt; "slow_statement"
+  }
+
+output {
+# Increase hitcounter when we see a slow statement
+  if "slow_statement" in [tags] {
+        statsd {
+                increment =&gt; "postgresql.slow_queries"
+        }
+  }
+  # increase hitcounter for all queries
+  # send timing metrics for queries
+  if "sql_message" in [tags] {
+          statsd {
+                timing =&gt; {"query_duration" =&gt; "%{duration}"}
+                increment =&gt; "postgresql.queries"
+          }
+  }
+  # Ship off all to rabbitmq
+  rabbitmq {
+    'durable' =&gt; true
+    'exchange' =&gt; 'logstash'
+    'exchange_type' =&gt; 'topic'
+    'host' =&gt;  "server"
+    #note - replace type and host manually since as of writing this isn't replaced like it should be
+    'key' =&gt; 'logstash.%{type}.%{host}'
+    'password' =&gt; "password"
+    'persistent' =&gt; true
+    'user' =&gt; 'shipper'
+    'vhost' =&gt; 'logstash'
+    'workers' =&gt; 4
+  }
+}
+</code></pre>
+
+<h3>Statsdaemon</h3>
+
+<p>Not much to this here - just run statsdaemon and edit the configuration file <code>/etc/statsdaemon.ini</code> and set the correct graphite host.</p>
+
+<h2>RabbitMQ</h2>
+
+<p>Set up rabbitmq with a Vhost for logstash, create users indexer and
+shipper that can read and write to the logstash vhost. Before starting
+the shipper, start the indexer which will automatically create the
+binding from the exchange to the queue.</p>
+
+<h2>ElasticSearch/Indexers</h2>
+
+<h3>ElasticSearch</h3>
+
+<p>Install elasticsearch with a fair bit of storage.</p>
+
+<pre><code class="yaml /etc/elasticsearch/elasticsearch.yml">cluster.name: elasticsearch
+path.conf: /etc/elasticsearch
+path.data: /opt/logs/elasticsearch/data
+path.logs: /opt/logs/elasticsearch/logs
+discovery.zen.minimum_master_nodes: 1
+discovery.zen.ping.multicast.enabled: true
+</code></pre>
+
+<h3>Logstash Indexer</h3>
+
+<p>Configure to pull events off RabbitMQ and index them into Elasticsearch</p>
+
+<pre><code class="plain /opt/logstash/server/etc/conf.d/logstash.conf">input {
+
+      rabbitmq {
+        'auto_delete' =&gt; 'false'
+        'codec' =&gt; 'json'
+        'debug' =&gt; true
+        'durable' =&gt; true
+        'exchange' =&gt; 'logstash'
+        'exclusive' =&gt; false
+        'host' =&gt; 'host'
+        'key' =&gt; 'logstash.#'
+        'password' =&gt; 'passwd'
+        'queue' =&gt; 'logstash-indexer'
+        'user' =&gt; 'indexer'
+        'vhost' =&gt; 'logstash'
+      }
+}
+
+output {
+  elasticsearch { host =&gt; "host"
+        cluster =&gt; "logstash"
+        protocol =&gt; "http"
+  }
+}
+</code></pre>
+
+<h3>Kibana</h3>
+
+<p>Install kibana from <a href="https://github.com/elasticsearch/kibana">git master</a> into the directory
+where you want it served from.</p>
+
+<h3>Nginx</h3>
+
+<p>Set up Nginx to show kibana HTML and to proxy requests to Elasticsearch</p>
+
+<pre><code class="nginx /etc/nginx/sites-enabled/kibana">server {
+  listen                host:80;
+
+  server_name           host;
+  access_log            /var/log/nginx/kibana.log;
+
+  location / {
+    root  /opt/kibana/current/src;
+    index  index.html  index.htm;
+  }
+
+location ~ ^/_aliases$ {
+    proxy_pass http://127.0.0.1:9200;
+    proxy_read_timeout 90;
+  }
+  location ~ ^/.*/_aliases$ {
+    proxy_pass http://127.0.0.1:9200;
+    proxy_read_timeout 90;
+  }
+  location ~ ^/_nodes$ {
+    proxy_pass http://127.0.0.1:9200;
+    proxy_read_timeout 90;
+  }
+  location ~ ^/.*/_search$ {
+    proxy_pass http://127.0.0.1:9200;
+    proxy_read_timeout 90;
+  }
+  location ~ ^/.*/_mapping$ {
+    proxy_pass http://127.0.0.1:9200;
+    proxy_read_timeout 90;
+  }
+  location ~ ^/_cluster/health$ {
+    proxy_pass http://127.0.0.1:9200;
+    proxy_read_timeout 90;
+  }
+
+  # password protected end points
+  location ~ ^/kibana-int/dashboard/.*$ {
+    proxy_pass http://127.0.0.1:9200;
+    proxy_read_timeout 90;
+  }
+  location ~ ^/kibana-int/temp.*$ {
+    proxy_pass http://127.0.0.1:9200;
+    proxy_read_timeout 90;
+  }
+}
+</code></pre>
+]]></content>
+  </entry>
+  
+</feed>
