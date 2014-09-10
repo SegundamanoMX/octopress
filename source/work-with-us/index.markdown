@@ -11,7 +11,7 @@ footer: true
 
 Here at Segundamano.mx we're always looking for talented engineers to join our technical team.
 We'll soon make all the current job offers available in a more convenient format,
-but if you're too impatient and want to contact us for an interview, please send an email to rh@segundamano.com.mx
+but if you're too impatient and want to contact us for an interview, please send an email to jobs@segundamano.com.mx
 together with your resume.
 
 ## Who we are
