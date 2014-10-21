@@ -3,6 +3,12 @@
   
   
   <url>
+    <loc>http://backstage.segundamano.mx/blog/2014/10/21/follow-us-on-github/</loc>
+    <lastmod>2014-10-21T10:39:11-05:00</lastmod>
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
     <loc>http://backstage.segundamano.mx/blog/2014/07/07/postgresql-metrics-pipeline/</loc>
     <lastmod>2014-07-07T08:00:59-05:00</lastmod>
     <priority>0.8</priority>
@@ -11,21 +17,21 @@
   
   <url>
     <loc>http://backstage.segundamano.mx/blog/archives/</loc>
-    <lastmod>2014-10-20T23:07:30-05:00</lastmod>
+    <lastmod>2014-10-21T16:33:15-05:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://backstage.segundamano.mx/</loc>
-    <lastmod>2014-10-20T23:07:30-05:00</lastmod>
+    <lastmod>2014-10-21T16:33:15-05:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   
   <url>
     <loc>http://backstage.segundamano.mx/work-with-us/</loc>
-    <lastmod>2014-10-20T23:07:30-05:00</lastmod>
+    <lastmod>2014-10-21T16:33:15-05:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>

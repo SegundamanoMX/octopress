@@ -4,7 +4,7 @@
   <title><![CDATA[Segundamano's Backstage]]></title>
   <link href="http://backstage.segundamano.mx/atom.xml" rel="self"/>
   <link href="http://backstage.segundamano.mx/"/>
-  <updated>2014-10-20T23:07:30-05:00</updated>
+  <updated>2014-10-21T16:33:15-05:00</updated>
   <id>http://backstage.segundamano.mx/</id>
   <author>
     <name><![CDATA[Segundamano.mx Tech Team]]></name>
@@ -12,6 +12,23 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Follow Us on GitHub!]]></title>
+    <link href="http://backstage.segundamano.mx/blog/2014/10/21/follow-us-on-github/"/>
+    <updated>2014-10-21T10:39:11-05:00</updated>
+    <id>http://backstage.segundamano.mx/blog/2014/10/21/follow-us-on-github</id>
+    <content type="html"><![CDATA[<p>Segundamano.mx is now on GitHub. Follow our <a href="https://github.com/SegundamanoMX">Organization Page</a>.</p>
+
+<p>The first repository that we have publised is this blog itself, whose source code
+will be available at <a href="https://github.com/SegundamanoMX/octopress">this location</a>
+and we hope that with time we&rsquo;ll be able to publish more bits and pieces, including contributions
+to third party FLOSS, our own software, and some challenges that we&rsquo;ll tackle together with some
+local communities.</p>
+
+<p>Stay tuned, and feel free to fork and contribute back on any of our public repositories!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Postgresql Metrics With Logstash]]></title>
