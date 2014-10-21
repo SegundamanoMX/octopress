@@ -1,3 +1,11 @@
+## What is Segundamano.mx?
+
+[Segundamano.mx](http://www.segundamano.mx) is a online classified site for the Mexican market.
+Our tech team uses Octopress to run its own tech blog: [Segundamano's Backstage](http://backstage.segundamano.mx).
+This is the source tree for the whole blog, which includes our customization as well as all our posts.
+Feel free to reuse the content provided here and in the blog, but please give us credits when you do so (and
+when credits are actually on us).
+
 ## What is Octopress?
 
 Octopress is [Jekyll](https://github.com/mojombo/jekyll) blogging at its finest.
