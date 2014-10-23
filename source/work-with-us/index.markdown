@@ -1,7 +1,6 @@
 ---
 layout: page
 title: "Work with Us!"
-date: 2014-09-08 15:00
 comments: true
 sharing: true
 footer: true
