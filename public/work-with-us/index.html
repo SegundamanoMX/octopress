@@ -96,7 +96,7 @@
 
 <p>Here at Segundamano.mx we&rsquo;re always looking for talented engineers to join our technical team.
 We&rsquo;ll soon make all the current job offers available in a more convenient format,
-but if you&rsquo;re too impatient and want to contact us for an interview, please send an email to <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#111;&#x3a;&#106;&#x6f;&#x62;&#115;&#x40;&#x73;&#101;&#x67;&#x75;&#110;&#100;&#97;&#109;&#97;&#110;&#x6f;&#x2e;&#x63;&#x6f;&#x6d;&#46;&#x6d;&#x78;">&#106;&#x6f;&#x62;&#115;&#64;&#115;&#101;&#103;&#x75;&#x6e;&#x64;&#x61;&#109;&#97;&#x6e;&#111;&#46;&#x63;&#111;&#109;&#x2e;&#109;&#120;</a>
+but if you&rsquo;re too impatient and want to contact us for an interview, please send an email to <a href="&#109;&#97;&#x69;&#x6c;&#x74;&#111;&#58;&#x6a;&#x6f;&#x62;&#115;&#64;&#115;&#x65;&#103;&#x75;&#110;&#x64;&#97;&#x6d;&#x61;&#110;&#x6f;&#46;&#x63;&#x6f;&#x6d;&#46;&#x6d;&#x78;">&#106;&#x6f;&#98;&#x73;&#64;&#x73;&#101;&#103;&#x75;&#x6e;&#x64;&#x61;&#x6d;&#x61;&#110;&#111;&#46;&#x63;&#x6f;&#109;&#46;&#109;&#120;</a>
 together with your resume.</p>
 
 <h2>Who we are</h2>
@@ -110,20 +110,7 @@ We like giving back to the community by sharing our experience.</p>
 <p>In order to give you an idea of the kind of environment we have at the office, we recently shoot a video.
 All the caracters are played by Segundamano.mx&rsquo;s employees!</p>
 
-<div class="ratio-4-3 embed-video-container" onclick="var myAnchor = document.getElementById('4B7w-2ozvQY');var tmpDiv = document.createElement('div');tmpDiv.innerHTML = '&lt;iframe style=&quot;vertical-align:top;width:100%;height:100%;position:absolute;&quot; src=&quot;http://www.youtube.com/embed/4B7w-2ozvQY?autoplay=1&quot; frameborder=&quot;0&quot; allowfullscreen&gt;&lt;/iframe&gt;';myAnchor.parentNode.replaceChild(tmpDiv.firstChild, myAnchor);return false;" title="click here to play">
-<a class="youtube-lazy-link" style="width:100%;height:100%;background:#000 url(http://i2.ytimg.com/vi/4B7w-2ozvQY/0.jpg) center center no-repeat;background-size:contain;position:absolute" href="http://www.youtube.com/watch?v=4B7w-2ozvQY" id="4B7w-2ozvQY" onclick="return false;">
-<div class="youtube-lazy-link-div"></div>
-<div class="youtube-lazy-link-info">Trabaja con nosotros. El Sheriff te necesita.</div>
-</a>
-<div class="video-info" >Segundamano.mx te está buscando. Contáctanos.
-
-Envíanos tu CV a rh@segundamano.com.mx
-
-segundamano.mx te busca. Video divertido de segundamano.mx
-No hace mucho tiempo, en un lugar no muy lejano, llegó segundamano, un forastero,  para salvar al mundo</div>
-</div>
-
-
+<div class="embed-video-container"><iframe src="//www.youtube.com/embed/4B7w-2ozvQY" allowfullscreen></iframe></div>
 
 
   
@@ -164,6 +151,35 @@ No hace mucho tiempo, en un lugar no muy lejano, llegó segundamano, un foraster
       </li>
     
   </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/SegundamanoMX">@SegundamanoMX</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'SegundamanoMX',
+            count: 0,
+            skip_forks: false,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
 
 
