@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Events | Segundamano's Backstage]]></title>
+  <link href="http://backstage.segundamano.mx/blog/categories/events/atom.xml" rel="self"/>
+  <link href="http://backstage.segundamano.mx/"/>
+  <updated>2015-05-27T08:42:56-05:00</updated>
+  <id>http://backstage.segundamano.mx/</id>
+  <author>
+    <name><![CDATA[Segundamano.mx Tech Team]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Hackamano, Segundamano.mx's Own Hackathon Is Coming!]]></title>
+    <link href="http://backstage.segundamano.mx/blog/2015/05/27/hackamano/"/>
+    <updated>2015-05-27T08:26:26-05:00</updated>
+    <id>http://backstage.segundamano.mx/blog/2015/05/27/hackamano</id>
+    <content type="html"><![CDATA[<p>Segundamano.mx is organazing its very own Hackathon: Hackamano 2015.
+The event will take place at the ITAM University campus in Mexico City
+the 20 &amp; 21 June 2015.</p>
+
+<p>The idea is that anyone can participate and be part of a team, with
+a very ambitious goal in mind: develop solution to today&rsquo;s problems in
+local communities.</p>
+
+<p>This can span from improving access to education, water supply, waste
+management, public transportation or whatever you think it makes sense
+in your social context.</p>
+
+<p>This will be the only rule, everything else will be limited by your own
+imagination!</p>
+
+<p>To get more information about the event, please refer to the <a href="http://hackamano.segundamano.mx">official page</a>. The registration page is also up and running <a href="http://bit.ly/hackamano-registro">here</a>. Places are limited, go register now!</p>
+]]></content>
+  </entry>
+  
+</feed>
