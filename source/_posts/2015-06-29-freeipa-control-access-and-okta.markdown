@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "FreeIPA Control Access (and OKTA)"
+title: "FreeIPA for your Infrastructure Daily Operations"
 date: 2015-06-29 15:42:23 -0500
 comments: true
 categories: 
@@ -10,8 +10,6 @@ categories:
 - Access Control
 - Authentication
 ---
-FreeIPA for your Infrastructure Daily Operations
-================================================
 
 When you manage lots of servers (Unix and Linux like), dozens or hundreds of them, one thing for sure that you must take in account is the Access Control, and there are many many tools to help us to that specific task, but let's be realists!  In a minimal decent infrastructure implementation you don?t need to have only Access Control, you need as well policies depending on the user's profile. For example, you are not going to provide root permissions to a sales guy in a linux server for making queries to the main database or if you just want certain developers can execute a critical script (bash or python or whatever).
 
