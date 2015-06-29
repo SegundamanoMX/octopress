@@ -86,6 +86,7 @@ Our solution
 
 We approached problem by complementing cross-region replication and versioning with backup management and a restore operation.
 We implemented managemenent and restore in the command line tool [`backup-my-bucket`](https://github.schibsted.io/smmx/backup-my-bucket).
+We wrote `backup-my-bucket` in [Go](http://golang.org/) and take advantage of it's facilities for writting concurrent code.
 With `backup-my-bucket` you backup and restore master into slave by means of a control machine.
 There is no restriction on where your control machine is located, e.g. your data center or Amazon EC2.
 
@@ -112,10 +113,9 @@ You only have to care about removing versions when they become obsolete.
 
 The snapshot of the slave bucket consists in creating an index of the contents of slave.
 Creation of the index happens when you run command `backup-my-bucket snapshot`.
-Figure 3: illustrate run of command snapshot.
 The command saves the snapshot in the snapshot machine.
 The snapshot may be compressed.
-The implementation distributes the work of exploring + querying S3 versions amongst a number of workers.
+The implementation distributes the work of exploring and querying S3 versions amongst a number of workers.
 A particular challenge to exploration of S3 buckets is that for each directory, S3 API will list files in batches of 1000.
 
 Restore
