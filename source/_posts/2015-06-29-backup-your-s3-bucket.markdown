@@ -44,15 +44,15 @@ We consider that a system that does the job let's you:
 2. Restore your master bucket to a given point in time.
 3. Manage your backups.
 
+{% img /images/backup-your-s3-bucket/fig2.png %}
+___Figure 2:__ Abstract architecture of a backup and restore system. Backup and restore operate on the master and slave buckets. The system should offer a management console, run from a control machine._
+
 Approaches to backup
 --------------------
 
 A first approach to backup is to store backups in your local data center.
 This is not what we want because it defeats the purpose of using S3.
 We want to store our master bucket in another S3 bucket.
-
-{% img /images/backup-your-s3-bucket/fig2.png %}
-___Figure 2:__ Abstract architecture of a backup and restore system. Backup and restore operate on the master and slave buckets. The system should offer a management console, run from a control machine._
 
 For backing up master bucket in a slave bucket, you can [copy the contents from master to slave](http://serverfault.com/a/239722).
 This however takes a lot of time and managing versions by hand is difficult.
