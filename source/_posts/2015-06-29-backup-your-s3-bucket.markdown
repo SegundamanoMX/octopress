@@ -156,7 +156,7 @@ The limit to the number of workers is dictated by your system limits, resources,
 We usually take several hours to restore a terabyte of data.
 
 {% img /images/backup-your-s3-bucket/fig7.png %}
-___Figure 7:_ We distribute restore operation amongst several workers, each copies a version key from slave to master at a time._
+___Figure 7:__ We distribute restore operation amongst several workers, each copies a version key from slave to master at a time._
 
 Manage
 ------
