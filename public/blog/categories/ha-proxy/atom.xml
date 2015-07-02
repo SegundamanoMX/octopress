@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Ha Proxy | Segundamano's Backstage]]></title>
   <link href="http://backstage.segundamano.mx/blog/categories/ha-proxy/atom.xml" rel="self"/>
   <link href="http://backstage.segundamano.mx/"/>
-  <updated>2015-06-29T17:41:16-05:00</updated>
+  <updated>2015-07-01T23:09:25-05:00</updated>
   <id>http://backstage.segundamano.mx/</id>
   <author>
     <name><![CDATA[Segundamano.mx Tech Team]]></name>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Continuous Delivery]]></title>
-    <link href="http://backstage.segundamano.mx/blog/2015/06/29/continuous-delivery/"/>
-    <updated>2015-06-29T16:08:49-05:00</updated>
-    <id>http://backstage.segundamano.mx/blog/2015/06/29/continuous-delivery</id>
+    <link href="http://backstage.segundamano.mx/blog/2015/07/01/continuous-delivery/"/>
+    <updated>2015-07-01T16:08:49-05:00</updated>
+    <id>http://backstage.segundamano.mx/blog/2015/07/01/continuous-delivery</id>
     <content type="html"><![CDATA[<p>Continuous Delivery is a software development approach in which teams keep producing code in short cycles and ensure that the software can be reliably and released at any time.</p>
 
 <p>What&rsquo;s Blue/Green deploy strategy? There&rsquo;s a lot of different opinions and definitions, for us we see it as a way to avoid being offline if something goes wrong with a new deploy of functionality (and being shouted at, or fired).</p>

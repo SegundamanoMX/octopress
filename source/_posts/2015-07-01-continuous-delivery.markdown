@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Continuous Delivery"
-date: 2015-06-29 16:08:49 -0500
+date: 2015-07-01 16:08:49 -0500
 comments: true
 categories: 
 - Continous Delivery
