@@ -1,13 +1,14 @@
 ---
 layout: post
 title: "How we backed our Amazon S3 bucket within S3"
-date: 2015-06-29 11:24:50 -0500
+date: 2015-07-02 9:00:00 -0500
 comments: true
 author: Ruslan Ledesma-Garza
 categories:
 - Backup and restore
 - AWS S3
 - Golang
+- Concurrent programming
 ---
 
 __TL;DR:__
@@ -15,7 +16,7 @@ Here at [segundamano.mx](http://www.segundamano.mx/) we store a fair amount of o
 Backup and restore of our S3 content is a must.
 We did not find a system that does the job.
 We tried [cross-region replication](http://docs.aws.amazon.com/AmazonS3/latest/dev/crr.html) and [versioning](http://docs.aws.amazon.com/AmazonS3/latest/dev/ObjectVersioning.html), and although neither is proper backup and restore system, they are building blocks for a proper system.
-Thus, we developed [backup-my-bucket](https://github.schibsted.io/smmx/backup-my-bucket), an open source tool that complements cross-region replication and versioning to form a backup and restore system for S3 buckets.
+Thus, we developed [backup-my-bucket](https://github.com/SegundamanoMX/backup-my-bucket), an open source tool that complements cross-region replication and versioning to form a backup and restore system for S3 buckets.
 
 You should backup your bucket
 -----------------------------
@@ -62,7 +63,7 @@ One could be tempted to avoid copying altogether by versioning.
 > __[Versioning](http://docs.aws.amazon.com/AmazonS3/latest/dev/Versioning.html):__ for a given key and key operation, preserve the current
   content of the key after the operation is applied on key. Example:
   preserve the content of key s3://master-bucket/cozumel.jpg after
-  deleting the key.
+  [deleting](http://docs.aws.amazon.com/AmazonS3/latest/dev/DeletingObjectVersions.html) the key.
 
 However, versioning alone does not offer a way to manage backups.
 Moreover, versioning does not isolate versions from operations applied to master bucket and it is perfectly possible to delete [all versions of a set of files](http://boulderapps.co/post/remove-all-versions-from-s3-bucket-using-aws-tools):
@@ -93,7 +94,7 @@ Our solution
 
 We approached problem by complementing cross-region replication and versioning with backup management and a restore operation.
 We implemented managemenent and restore in the command line tool `backup-my-bucket`.
-We wrote `backup-my-bucket` in [Go](http://golang.org/) and made it [open source](https://github.schibsted.io/smmx/backup-my-bucket).
+We wrote `backup-my-bucket` in [Go](http://golang.org/) and made it [open source](https://github.com/SegundamanoMX/backup-my-bucket).
 We take advantage of it's facilities for writting concurrent code, in particular [goroutines](https://gobyexample.com/goroutines) and [channels](https://gobyexample.com/channels).
 With `backup-my-bucket` you backup and restore master into slave by means of a control machine.
 There is no restriction on where your control machine is located, e.g. your data center or Amazon EC2.
@@ -136,7 +137,7 @@ ___Figure 5:__ Snapshot of the slave bucket proceeds by creating an index of the
 The command saves the snapshot in the control machine.
 The snapshot may be compressed.
 A particular challenge to taking snapshots of S3 buckets is that for each directory, S3 API will list files in batches of 1000.
-We approach the problem by [exploring the slave bucket breadth-first](https://github.schibsted.io/smmx/backup-my-bucket/blob/2deb83fc44eb278aeed8752c87624321ae591eff/snapshot/snapshot.go).
+We approach the problem by [exploring the slave bucket breadth-first](https://github.com/SegundamanoMX/backup-my-bucket/blob/0.1.0/snapshot/snapshot.go).
 For each new directory found we spawn a new worker goroutine, thus distributing queries to S3 API and making a more efficient use of resources than a depth-first approach.
 The number of workers is configurable.
 We usually take less than an hour to process c.a. 15 million keys in a flat directory tree.
@@ -151,7 +152,7 @@ Restore happens when you run command `backup-my-bucket restore`.
 {% img /images/backup-your-s3-bucket/fig6.png %}
 __Figure 6:__ A run of restore from slave into master is executed from the control machine. Restore proceeds by copying versions corresponding to a given snapshot.
 
-Given the snapshot, the [tool](https://github.schibsted.io/smmx/backup-my-bucket/blob/2deb83fc44eb278aeed8752c87624321ae591eff/restore/restore.go) distributes the copy of corresponding versions amongst a configurable number of worker goroutines.
+Given the snapshot, the [tool](https://github.com/SegundamanoMX/backup-my-bucket/blob/0.1.0/restore/restore.go) distributes the copy of corresponding versions amongst a configurable number of worker goroutines.
 The limit to the number of workers is dictated by your system limits, resources, and your upload speed.
 We usually take several hours to restore a terabyte of data.
 
