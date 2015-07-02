@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Logstash | Segundamano's Backstage]]></title>
   <link href="http://backstage.segundamano.mx/blog/categories/logstash/atom.xml" rel="self"/>
   <link href="http://backstage.segundamano.mx/"/>
-  <updated>2015-07-01T23:09:25-05:00</updated>
+  <updated>2015-07-02T12:58:06-05:00</updated>
   <id>http://backstage.segundamano.mx/</id>
   <author>
     <name><![CDATA[Segundamano.mx Tech Team]]></name>
@@ -56,7 +56,7 @@ separate for each slow query.</p>
 later point but it&rsquo;s a start. I drew a little picture with the various
 components - the dotted lines denote host boundaries</p>
 
-<p>{% img /images/logstash_pipeline.png %}</p>
+<p><img src="/images/logstash_pipeline.png"></p>
 
 <h3>Database servers</h3>
 
@@ -176,13 +176,13 @@ the Kibana interface to spot slow queries, specifically two major
 offenders that we could clear up with one index on a table.</p>
 
 <p>Kibana slow query count:
-{% img /images/kibana_slows.png %}</p>
+<img src="/images/kibana_slows.png"></p>
 
 <p>Graphite queries vs slow queries
-{% img /images/query_count.png %}</p>
+<img src="/images/query_count.png"></p>
 
 <p>Graphite query time
-{% img /images/query_time.png %}</p>
+<img src="/images/query_time.png"></p>
 
 <!-- more -->
 

@@ -9,7 +9,10 @@
   <meta name="author" content="Segundamano.mx Tech Team">
 
   
-  <meta name="description" content="Continuous Delivery is a software development approach in which teams keep producing code in short cycles and ensure that the software can be &hellip;">
+  <meta name="description" content="TL;DR:
+Here at segundamano.mx we store a fair amount of our content in Amazon S3.
+Backup and restore of our S3 content is a must.
+We did not find a &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -86,6 +89,222 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/07/02/backup-your-s3-bucket/">How We Backed Our Amazon S3 Bucket Within S3</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-07-02T09:00:00-05:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2015</span></span> <span class='time'>9:00 am</span></time>
+        
+      </p>
+    
+      <p>
+        
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Ruslan Ledesma-Garza</span></span>
+
+      </p>
+  </header>
+
+
+  <div class="entry-content"><p><strong>TL;DR:</strong>
+Here at <a href="http://www.segundamano.mx/">segundamano.mx</a> we store a fair amount of our content in <a href="http://aws.amazon.com/s3/">Amazon S3</a>.
+Backup and restore of our S3 content is a must.
+We did not find a system that does the job.
+We tried <a href="http://docs.aws.amazon.com/AmazonS3/latest/dev/crr.html">cross-region replication</a> and <a href="http://docs.aws.amazon.com/AmazonS3/latest/dev/ObjectVersioning.html">versioning</a>, and although neither is proper backup and restore system, they are building blocks for a proper system.
+Thus, we developed <a href="https://github.com/SegundamanoMX/backup-my-bucket">backup-my-bucket</a>, an open source tool that complements cross-region replication and versioning to form a backup and restore system for S3 buckets.</p>
+
+<h2>You should backup your bucket</h2>
+
+<p>When you run a site with a huge amount of content, delegating administration of storage to a cloud service is something you should consider.
+Here at <a href="http://www.segundamano.mx/">segundamano.mx</a> we choose <a href="http://aws.amazon.com/s3/">Amazon S3</a>.</p>
+
+<p><img src="/images/backup-your-s3-bucket/fig1.png">
+<em><strong>Figure 1:</strong> Our site writes and reads some content from a master bucket.</em></p>
+
+<p>Once you start storing content on Amazon S3 (but really, hopefully before), you will start worrying about reliability of your site.
+My colleages and I are commited to designing and developing systems that are highly-available and fault tolerant.
+But despite your efforts, it is always a good idea to have a disaster recovery plan for your S3 buckets.</p>
+
+<p>We consider that a good disaster recovery plan for Amazon S3 considers system and human errors.
+A system error is the loss of a file due to data corruption or the deletion of a set of files due to a bug in our code.
+A human error is the deletion of a set of files, for example due to <a href="http://docs.aws.amazon.com/cli/latest/reference/s3/rm.html">aws s3 rm s3://master-bucket/cozumel.jpg</a>.
+For data corruption, you could argue that <a href="http://aws.amazon.com/s3/faqs/#data-protection_anchor"><em>Amazon&rsquo;s 99.999999999%</em> durability</a> is enough and <a href="http://stackoverflow.com/a/17839589">forget about that</a>.
+For the accidental deletion of files due to system or human error, you could consider that copying by cross-region replication or <a href="https://aws.amazon.com/blogs/aws/archive-s3-to-glacier/">glacier storage</a> is enough.
+But truth is that, when you go into production, you won&rsquo;t feel very confident.</p>
+
+<p>Backup is an essential part of an effective disaster recovery plan.
+We consider that a system that does the job let&rsquo;s you:</p>
+
+<ol>
+<li>Backup your master bucket.</li>
+<li>Restore your master bucket to a given point in time.</li>
+<li>Manage your backups.</li>
+</ol>
+
+
+<p><img src="/images/backup-your-s3-bucket/fig2.png">
+<em><strong>Figure 2:</strong> Abstract architecture of a backup and restore system. Backup and restore operate on the master and slave buckets. The system should offer a management console, run from a control machine.</em></p>
+
+<h2>Approaches to backup</h2>
+
+<p>A first approach to backup is to store backups in your local data center.
+This is not what we want because it defeats the purpose of using S3.
+We want to store our master bucket in another S3 bucket.</p>
+
+<p>For backing up master bucket in a slave bucket, you can <a href="http://serverfault.com/a/239722">copy the contents from master to slave</a>.
+This however takes a lot of time and managing versions by hand is difficult.</p>
+
+<p>One could be tempted to avoid copying altogether by versioning.</p>
+
+<blockquote><p><strong><a href="http://docs.aws.amazon.com/AmazonS3/latest/dev/Versioning.html">Versioning</a>:</strong> for a given key and key operation, preserve the current
+  content of the key after the operation is applied on key. Example:
+  preserve the content of key s3://master-bucket/cozumel.jpg after
+  <a href="http://docs.aws.amazon.com/AmazonS3/latest/dev/DeletingObjectVersions.html">deleting</a> the key.</p></blockquote>
+
+<p>However, versioning alone does not offer a way to manage backups.
+Moreover, versioning does not isolate versions from operations applied to master bucket and it is perfectly possible to delete <a href="http://boulderapps.co/post/remove-all-versions-from-s3-bucket-using-aws-tools">all versions of a set of files</a>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">echo</span> <span class="s1">&#39;#!/bin/bash&#39;</span> &gt; deleteBucketScript.sh
+</span><span class='line'>
+</span><span class='line'>aws --output text s3api list-object-versions --bucket master-bucket <span class="p">|</span> <span class="se">\</span>
+</span><span class='line'>grep -E <span class="s2">&quot;^VERSIONS&quot;</span> <span class="p">|</span> <span class="se">\</span>
+</span><span class='line'>awk <span class="s1">&#39;{print &quot;aws s3api delete-object --bucket master-bucket --key &quot;$4&quot; --version-id &quot;$8&quot;;&quot;}&#39;</span> &gt;&gt; deleteBucketScript.sh
+</span><span class='line'>
+</span><span class='line'>. deleteBucketScript.sh
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Cross-region replication sounds more like what we need.</p>
+
+<blockquote><p><strong><a href="http://docs.aws.amazon.com/AmazonS3/latest/dev/crr.html">Cross-region replication</a>:</strong> for given buckets master &amp; slave, and
+   given key operation, apply operation to bucket slave after
+   operation is applied to master. Example: upload file cozumel.jpg
+   to bucket slave after I upload file cozumel.jpg to bucket master.</p></blockquote>
+
+<p>Cross-region replication has two advantages:
+(1) replicates creation and deletion of files, and
+(2) restricts the location of the master and the slave so that they are in different locations.
+However, restoration and management of versions is still difficult and unpractical</p>
+
+<h2>Our solution</h2>
+
+<p>We approached problem by complementing cross-region replication and versioning with backup management and a restore operation.
+We implemented managemenent and restore in the command line tool <code>backup-my-bucket</code>.
+We wrote <code>backup-my-bucket</code> in <a href="http://golang.org/">Go</a> and made it <a href="https://github.com/SegundamanoMX/backup-my-bucket">open source</a>.
+We take advantage of it&rsquo;s facilities for writting concurrent code, in particular <a href="https://gobyexample.com/goroutines">goroutines</a> and <a href="https://gobyexample.com/channels">channels</a>.
+With <code>backup-my-bucket</code> you backup and restore master into slave by means of a control machine.
+There is no restriction on where your control machine is located, e.g. your data center or Amazon EC2.</p>
+
+<h2>Backup</h2>
+
+<p>When we backup we create a restoration point.
+A restoration point is a copy of the contents of master at a given point in time.
+We create restoration points in two steps:
+(1) copy contents of master to slave, and
+(2) snapshot contents of slave.
+Each restoration point consists of a snapshot and a set of files.</p>
+
+<p>For the copy, we apply cross-region replication.
+Cross-region replication continually copies contents of master to slave.</p>
+
+<p><img src="/images/backup-your-s3-bucket/fig3.png">
+<em><strong>Figure 3:</strong> We use cross-Region replication to continually replicate onto slave bucket each operation applied to master bucket.</em></p>
+
+<p>With this approach we can make backups faster in the sense that we do not wait several hours for a copy operation to bring all data from master to slave
+Instead, by copying keys as soon as they are modified we obtain the latest version of slave in master at any given time.
+Moreover, <a href="http://docs.aws.amazon.com/AmazonS3/latest/dev/crr-what-is-isnot-replicated.html">cross-region replication does not replicate version deletes</a>, thus protects from malicious deletion.</p>
+
+<p>Cross-region replication requires enabling versioning on the slave bucket.
+Thus, every time we operate on a key in the slave bucket, versioning takes care of creating a version of that key.</p>
+
+<p><img src="/images/backup-your-s3-bucket/fig4.png">
+<em><strong>Figure 4:</strong> Every time cross-region replication applies a change to slave bucket, versioning stores corresponding versions in slave bucket. The write to file <code>A</code> creates version <code>A3</code>, the delete of file <code>C</code> creates delete marker <code>DEL</code>.</em></p>
+
+<p>Versioning releases you from implementing a repository of versions.
+You only have to care about removing versions when they become obsolete.</p>
+
+<p>The snapshot of the slave bucket is an index of the contents of slave.
+Creation of the snapshot happens when you run command <code>backup-my-bucket snapshot</code>.</p>
+
+<p><img src="/images/backup-your-s3-bucket/fig5.png">
+<em><strong>Figure 5:</strong> Snapshot of the slave bucket proceeds by creating an index of the current versions of the keys in slave.</em></p>
+
+<p>The command saves the snapshot in the control machine.
+The snapshot may be compressed.
+A particular challenge to taking snapshots of S3 buckets is that for each directory, S3 API will list files in batches of 1000.
+We approach the problem by <a href="https://github.com/SegundamanoMX/backup-my-bucket/blob/0.1.0/snapshot/snapshot.go">exploring the slave bucket breadth-first</a>.
+For each new directory found we spawn a new worker goroutine, thus distributing queries to S3 API and making a more efficient use of resources than a depth-first approach.
+The number of workers is configurable.
+We usually take less than an hour to process c.a. 15 million keys in a flat directory tree.
+Of course asking for more workers than the count of directories in your directory tree will bring no gain in speed.</p>
+
+<h2>Restore</h2>
+
+<p>For a given snapshot, restore is the copy of the corresponding versions from slave bucket to master bucket.
+Restore happens when you run command <code>backup-my-bucket restore</code>.</p>
+
+<p><img src="/images/backup-your-s3-bucket/fig6.png">
+<strong>Figure 6:</strong> A run of restore from slave into master is executed from the control machine. Restore proceeds by copying versions corresponding to a given snapshot.</p>
+
+<p>Given the snapshot, the <a href="https://github.com/SegundamanoMX/backup-my-bucket/blob/0.1.0/restore/restore.go">tool</a> distributes the copy of corresponding versions amongst a configurable number of worker goroutines.
+The limit to the number of workers is dictated by your system limits, resources, and your upload speed.
+We usually take several hours to restore a terabyte of data.</p>
+
+<p><img src="/images/backup-your-s3-bucket/fig7.png">
+<em><strong>Figure 7:</strong> We distribute restore operation amongst several workers, each copies a version key from slave to master at a time.</em></p>
+
+<h2>Manage</h2>
+
+<p>Management of restoration points consists in periodically running command <code>backup-my-bucket gc</code>.
+The command will remove all obsolete restoration points.
+That includes the snapshot file and all corresponding versions in the slave bucket.
+A restoration point is obsolete when it is older than the retention policy.
+If there are not enough restoration points to meet the minimum redundancy policy, the command will not remove any restoration point.</p>
+
+<p><img src="/images/backup-your-s3-bucket/fig8.png">
+<em><strong>Figure 8:</strong> A run of <code>gc</code> removes all the versions corresponding to an obsolete restoration point.</em></p>
+
+<h2>Future work</h2>
+
+<p>Currently, <code>backup-my-bucket</code> is in beta stage.
+For future versions, we would love to have the following features that we may or may not develop.</p>
+
+<ol>
+<li>Copy files from master to slave during creation of restoration
+points. Instead, we currently rely on cross region replication to copy
+contents in advance.</li>
+<li>Compress contents of restoration points. We already compress snapshot files, so nothing to do there.</li>
+<li>Do recovery by fall back. That is, promote slave to master and move restoration points to new slave.</li>
+</ol>
+
+
+<p>We encourage people to try <code>backup-my-bucket</code> out and submit pull requests.
+And, of course, we are <a href="http://backstage.segundamano.mx/work-with-us/">hiring</a>, so drop us a line.</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1026,6 +1245,10 @@ offenders that we could clear up with one index on a table.</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/07/02/backup-your-s3-bucket/">How We Backed Our Amazon S3 Bucket Within S3</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/07/01/continuous-delivery/">Continuous Delivery</a>
       </li>
     
@@ -1039,10 +1262,6 @@ offenders that we could clear up with one index on a table.</p>
     
       <li class="post">
         <a href="/blog/2014/10/21/follow-us-on-github/">Follow Us on GitHub!</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2014/07/07/postgresql-metrics-pipeline/">Postgresql Metrics With Logstash</a>
       </li>
     
   </ul>
