@@ -25,6 +25,16 @@ a browser to reuse a resource it has already retrieved and cached.
 
 ## Cache busting using query strings
 
+This technique uses a query string appended to the resource link, it could be
+whatever you want, but timestamps and version numbers are suggested.
+
+``` html
+<link rel="stylesheet" type="text/css" href="css/example.css?v1.0" />
+```
+
+One downside for this approach is that sometimes query strings are ignored, that
+means for the browser the file hasn't changed, and the cache busting doesn't happen.
+
 ## Cache busting by fingerprinting your assets
 
 ### Do it automatically
