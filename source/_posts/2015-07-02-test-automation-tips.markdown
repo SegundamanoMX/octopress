@@ -1,0 +1,76 @@
+---
+layout: post
+title: "Test Automation Tips"
+date: 2015-07-02 16:48:56 -0500
+comments: true
+author: Oscar Enriquez Mora
+categories: 
+- Test Automation
+- Software Quality Assurance
+---
+
+Over my 15 year experience in the field of Software Quality Assurance, at almost all my jobs and projects, I was required to use some type of automation tool/framework in order to improve quality and time to complete the different test phases.  Based on this experience I have learned the importance of automation testing and I learned a few things along the way. I would like to share a few tips for anyone interested in starting or improving test automation in their projects.
+
+Follow one strategy for your overall testing process
+----------------------------------------------------
+
+When you have a need to start automating or improving your testing, it is highly recommended that you follow an overall test strategy in order to clearly determine what needs and can be automated. Know exactly what you want to accomplish and how you can do that. 
+
+For example, for agile testing there is a recommended approach based on the four agile testing quadrants. There are some good articles on the internet and even books written about it. At [segundamano.mx](http://www.segundamano.mx) we base our strategy on these four agile testing quadrants following the recommendations provided in the book *Agile Testing* by Lisa Crispin and Janet Gregory, highly recommended for anyone following Agile methodologies.
+
+Following this approach, it is very clear to us what should be automated, who is responsible for it, what phase might take priority and how we can distribute our automated testing. 
+
+{% img /images/agile_four_quadrants.png %}
+
+
+Never compare Manual vs Automated Testing
+------------------------------------------
+
+They serve two different purposes and depending on the project and technology to be tested you will use one or the other or in most cases both. 
+
+My first project that involved test automation was to test a wireless switch and it mainly consisted in injecting messages to the switch and expected a response back (testing protocols). In this case, 98% of our testing was done with automated scripts (using TCL) which made a lot of sense since there was no direct interaction with the users. However, later on when I was testing cellular phones it made a lot of sense to do a lot of manual testing since we wanted to make sure the user experience was considered. 
+
+Consider that some testing such as exploratory testing and anything related to User Experience should probably be done manually since it requires a human mind to identify issues/bugs related to this area.
+
+Not everything can be automated
+-------------------------------
+
+Somehow related to my previous point but I wanted to be more specific to determine how much of your testing should automated. While testing cellular phones at Motorola I was involved in a project where the goal was to automate more than 90% of our manual test cases. Unfortunately this could not be accomplished mainly for the following reason: 
+
+The User Interface of the different devices was constantly changing, the flows were changing and although we tried to modify the internal tool to mitigate these problems it was just impossible to keep up with the changes.
+
+When thinking about test automation make sure you make a good initial analysis involving the right people. Consider the features to test, are they something to stay for a long period of time or temporary? are they stable enough or not, how often will they change? Does it make sense to automate it in regards to time, effort and subsequent use? Automate what makes sense and consider the limitations automation might have.
+
+Communication between QA and Development is key for success
+-----------------------------------------------------------
+Communication problems between testers and developers are a thing of the past, well, it's a nice thought but we still have to work on it. A good start can be working together to automate all testing phases. When I joined [segundamano.mx](http://www.segundamano.mx) one of my first assignments was to investigate how to migrate (and actually do it) our regression scripts from selenium to rspec/capybara. These were test scripts mainly managed by the developers used in our continuous integration setup. 
+
+During the process, there was a lot of involvement from the developers in regards to learning the previous testing framework, learning the new capybara tool, using some tools to automatically translate the scripts and actually helping with the migration. At the end of the project every developer and tester in the team was involved in migrating at least one script from selenium to capybara. 
+
+The lessons learned: 
+
+* Get developers involved in all phases of testing.
+* Clearly define who is responsible for the different activities related to automation, from unit/component testing to functional and manual testing. 
+* Consider the opinion of developers when selecting a tool to automate, specially if they will be using the tool. 
+* As a tester, understand what is getting automated by the developers in order to know what you need to automate and test at later phases.
+
+Select the right tool 
+----------------------
+
+Choosing the wrong tool can cause a lot of pain and frustration but fortunately we have lots of options. At [segundamano.mx](http://www.segundamano.mx) we use rspec/capybara, go, selenium and most recently intern. Each one for a different user/team/technology and with a different purpose. You will need to define first what are your needs, who will be using the tool,  during which phase  it will be used, for which type of testing (eg. unit vs functional). 
+
+Take your time to decide and don't be afraid to try them, lots of them are open source and the ones that are not usually have a free trial. Get the developers involved, they always provide good feedback. Also, consider how big is the community supporting the test tool/framework, the bigger the community the better since you will be able to find answers to your questions faster.
+
+Automation of New Features vs Regression Scenarios
+--------------------------------------------------
+
+So you to the point where have a good set of regression test cases but continue to add lots of new functionality, what should you do about this new functionality? 
+
+When new functionality is added you need to think which scenarios have to be automated in order to add them as part of the regression. A happy path of the new functionality should always be part of the regression plus a set of negative test cases. The number of test cases will be based on the size and importance of the functionality but the main idea is to verify that the new functionality continues to work one or more years down the road without any problems.
+
+The sooner you find bugs the better
+-----------------------------------
+
+Finding a bug during unit testing will take a developer probably just a few minutes to fix. Finding a bug in production will make everyone's life miserable, time for fixing, testing and releasing a bug fix will be needed.... time means money.  No matter how you look at it, the sooner you find bugs the better for everyone. When deciding which test phase to automate and how much testing should be done for each phase always consider this.
+
+I was not trying to provide a complete solution to how and when automated testing should be done, I just wanted to provide some tips based on my experience and share it with you. Hopefully you found it informative. Please feel free to provide any comments and share your own experiences.
