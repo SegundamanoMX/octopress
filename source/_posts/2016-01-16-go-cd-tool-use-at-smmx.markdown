@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "GO Continuous Delivery Tool Experience at Segundamano.mx"
-date: 2015-12-16 08:41:13 -0600
+date: 2016-01-16 13:16:13 -0600
 comments: true
 author: Oscar Enriquez
 categories: 
