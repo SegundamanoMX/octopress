@@ -5,12 +5,12 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Follow Us on GitHub! - Segundamano&#8217;s Backstage</title>
+  <title>Static Assets Cache Busting - Segundamano&#8217;s Backstage</title>
   <meta name="author" content="Segundamano.mx Tech Team">
 
   
-  <meta name="description" content="Segundamano.mx is now on GitHub. Follow our Organization Page. The first repository that we have publised is this blog itself, whose source code
-will &hellip;">
+  <meta name="description" content="TL;DR You want to set up cache headers with an expiration time in the far future, but
+be able to force the browser to download the new version of an &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -19,7 +19,7 @@ will &hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://backstage.segundamano.mx/blog/2014/10/21/follow-us-on-github">
+  <link rel="canonical" href="http://backstage.segundamano.mx/blog/2016/01/15/static-assets-cache-busting">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Segundamano's Backstage" type="application/atom+xml">
@@ -90,7 +90,7 @@ will &hellip;">
   
   <header>
     
-      <h1 class="entry-title">Follow Us on GitHub!</h1>
+      <h1 class="entry-title">Static Assets Cache Busting</h1>
     
     
       <p class="meta">
@@ -99,7 +99,7 @@ will &hellip;">
 
 
 
-<time class='entry-date' datetime='2014-10-21T10:39:11-05:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>10:39 am</span></time>
+<time class='entry-date' datetime='2016-01-15T17:36:00-06:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span> <span class='time'>5:36 pm</span></time>
         
       </p>
     
@@ -107,21 +107,80 @@ will &hellip;">
         
   
 
-<span class="byline author vcard">Posted by <span class="fn">Sergio Visinoni</span></span>
+<span class="byline author vcard">Posted by <span class="fn">José Ríos</span></span>
 
       </p>
   </header>
 
 
-<div class="entry-content"><p>Segundamano.mx is now on GitHub. Follow our <a href="https://github.com/SegundamanoMX">Organization Page</a>.</p>
+<div class="entry-content"><h2>TL;DR</h2>
 
-<p>The first repository that we have publised is this blog itself, whose source code
-will be available at <a href="https://github.com/SegundamanoMX/octopress">this location</a>
-and we hope that with time we&rsquo;ll be able to publish more bits and pieces, including contributions
-to third party FLOSS, our own software, and some challenges that we&rsquo;ll tackle together with some
-local communities.</p>
+<p>You want to set up cache headers with an expiration time in the far future, but
+be able to force the browser to download the new version of an updated file. You
+should use file content&rsquo;s fingerprinting as a filename part.</p>
 
-<p>Stay tuned, and feel free to fork and contribute back on any of our public repositories!</p>
+<h2>What&rsquo;s cache busting and why it&rsquo;s useful</h2>
+
+<p>So, you&rsquo;re worried about the performance of your site and have leveraged cache
+headers, which tell the browser to hang onto the cached files for a given amount
+of time, commonly this time is as long as six months or more, or maybe you&rsquo;re
+even using a CDN for all your static assets: images, CSS and JavaScript files.</p>
+
+<p>Then, during the next release of your site you realize something is wrong, there
+is a bug and you have already spent some time looking for the cause, only to
+discover that a CSS file seems not to have the last changes introduced by the last
+deploy, so you empty your browser cache, reload, and voilá, issue solved.</p>
+
+<p>When using a CDN it&rsquo;s a little bit harder to debug this kind of problems, you will
+have to check whether the asset is being served by your upstream server or by your
+CDN, if so, you will have to purge your CDN caching, too.</p>
+
+<p>You need a way for breaking the cache and force the browser to download a new copy
+of the CSS file every time it has changes, without having to empty the browser cache
+or purging your CDN. Enter cache busting.</p>
+
+<h2>Cache busting using query strings</h2>
+
+<p>This technique uses a query string appended to the resource link, it could be
+whatever you want, but timestamps and version numbers are suggested.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;link</span> <span class="na">rel=</span><span class="s">&quot;stylesheet&quot;</span> <span class="na">type=</span><span class="s">&quot;text/css&quot;</span> <span class="na">href=</span><span class="s">&quot;css/example.css?v1.0&quot;</span> <span class="nt">/&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>One downside for this approach is that sometimes query strings are ignored as a part
+of the filename, for the browser that means the file hasn&rsquo;t changed, and the cache
+busting doesn&rsquo;t happen.</p>
+
+<h2>Cache busting by file fingerprinting</h2>
+
+<p>There&rsquo;s another technique which modifies the filename using a hash (MD5, SHA1,
+etc.), this hash is commonly placed before the file extension, using it as a part
+of the filename allows to effectively break the browser cache and download the new
+version.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;link</span> <span class="na">rel=</span><span class="s">&quot;stylesheet&quot;</span> <span class="na">type=</span><span class="s">&quot;text/css&quot;</span> <span class="na">href=</span><span class="s">&quot;css/example.bc67fbd9.css&quot;</span> <span class="nt">/&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The hash is computed based on the content of the file, so that it changes whenever
+a file is updated, it doesn&rsquo;t change otherwise. The hash is also computed one file at
+a time, that is, each file has a unique hash.</p>
+
+<h3>Do it automatically</h3>
+
+<p>Computing the hash and renaming the files manually is error prone and you shouldn&rsquo;t
+do this. The only way for this to work, is to add this process into the build stage,
+so the source files are in the <code>src/</code> directory, with their names unmodified and then
+<a href="https://www.npmjs.com/package/hashmark">process them</a> and output the final files in
+the <code>build/</code> directory, with their names containing the hash.</p>
+
+<p>But, what about all the references to these files? These references must be
+<a href="https://www.npmjs.com/package/map-replace">updated</a> on the build stage, too, otherwise
+the CSS, HTML or JavaScript files using any of these assets would be using an outdated
+version of them.</p>
 </div>
 
 
@@ -130,19 +189,19 @@ local communities.</p>
       
   
 
-<span class="byline author vcard">Posted by <span class="fn">Sergio Visinoni</span></span>
+<span class="byline author vcard">Posted by <span class="fn">José Ríos</span></span>
 
       
 
 
 
 
-<time class='entry-date' datetime='2014-10-21T10:39:11-05:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>10:39 am</span></time>
+<time class='entry-date' datetime='2016-01-15T17:36:00-06:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span> <span class='time'>5:36 pm</span></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/code/'>code</a>, <a class='category' href='/blog/categories/floss/'>floss</a>, <a class='category' href='/blog/categories/github/'>github</a>, <a class='category' href='/blog/categories/octopress/'>octopress</a>
+    <a class='category' href='/blog/categories/browser-cache/'>browser cache</a>, <a class='category' href='/blog/categories/build-system/'>build system</a>, <a class='category' href='/blog/categories/static-assets/'>static assets</a>
   
 </span>
 
@@ -151,7 +210,7 @@ local communities.</p>
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://backstage.segundamano.mx/blog/2014/10/21/follow-us-on-github/" data-via="" data-counturl="http://backstage.segundamano.mx/blog/2014/10/21/follow-us-on-github/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://backstage.segundamano.mx/blog/2016/01/15/static-assets-cache-busting/" data-via="" data-counturl="http://backstage.segundamano.mx/blog/2016/01/15/static-assets-cache-busting/" >Tweet</a>
   
   
   <div class="g-plusone" data-size="medium"></div>
@@ -164,10 +223,8 @@ local communities.</p>
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2014/07/07/postgresql-metrics-pipeline/" title="Previous Post: Postgresql Metrics with Logstash">&laquo; Postgresql Metrics with Logstash</a>
+        <a class="basic-alignment left" href="/blog/2016/01/14/test-automation-tips/" title="Previous Post: Test Automation Tips">&laquo; Test Automation Tips</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2015/05/27/hackamano/" title="Next Post: Hackamano, Segundamano.mx's own Hackathon is coming!">Hackamano, Segundamano.mx&#8217;s own Hackathon is coming! &raquo;</a>
       
     </p>
   </footer>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Static Assets | Segundamano's Backstage]]></title>
+  <link href="http://backstage.segundamano.mx/blog/categories/static-assets/atom.xml" rel="self"/>
+  <link href="http://backstage.segundamano.mx/"/>
+  <updated>2016-01-15T23:37:30-06:00</updated>
+  <id>http://backstage.segundamano.mx/</id>
+  <author>
+    <name><![CDATA[Segundamano.mx Tech Team]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Static Assets Cache Busting]]></title>
+    <link href="http://backstage.segundamano.mx/blog/2016/01/15/static-assets-cache-busting/"/>
+    <updated>2016-01-15T17:36:00-06:00</updated>
+    <id>http://backstage.segundamano.mx/blog/2016/01/15/static-assets-cache-busting</id>
+    <content type="html"><![CDATA[<h2>TL;DR</h2>
+
+<p>You want to set up cache headers with an expiration time in the far future, but
+be able to force the browser to download the new version of an updated file. You
+should use file content&rsquo;s fingerprinting as a filename part.</p>
+
+<h2>What&rsquo;s cache busting and why it&rsquo;s useful</h2>
+
+<p>So, you&rsquo;re worried about the performance of your site and have leveraged cache
+headers, which tell the browser to hang onto the cached files for a given amount
+of time, commonly this time is as long as six months or more, or maybe you&rsquo;re
+even using a CDN for all your static assets: images, CSS and JavaScript files.</p>
+
+<p>Then, during the next release of your site you realize something is wrong, there
+is a bug and you have already spent some time looking for the cause, only to
+discover that a CSS file seems not to have the last changes introduced by the last
+deploy, so you empty your browser cache, reload, and voilá, issue solved.</p>
+
+<p>When using a CDN it&rsquo;s a little bit harder to debug this kind of problems, you will
+have to check whether the asset is being served by your upstream server or by your
+CDN, if so, you will have to purge your CDN caching, too.</p>
+
+<p>You need a way for breaking the cache and force the browser to download a new copy
+of the CSS file every time it has changes, without having to empty the browser cache
+or purging your CDN. Enter cache busting.</p>
+
+<h2>Cache busting using query strings</h2>
+
+<p>This technique uses a query string appended to the resource link, it could be
+whatever you want, but timestamps and version numbers are suggested.</p>
+
+<pre><code class="html">&lt;link rel="stylesheet" type="text/css" href="css/example.css?v1.0" /&gt;
+</code></pre>
+
+<p>One downside for this approach is that sometimes query strings are ignored as a part
+of the filename, for the browser that means the file hasn&rsquo;t changed, and the cache
+busting doesn&rsquo;t happen.</p>
+
+<h2>Cache busting by file fingerprinting</h2>
+
+<p>There&rsquo;s another technique which modifies the filename using a hash (MD5, SHA1,
+etc.), this hash is commonly placed before the file extension, using it as a part
+of the filename allows to effectively break the browser cache and download the new
+version.</p>
+
+<pre><code class="html">&lt;link rel="stylesheet" type="text/css" href="css/example.bc67fbd9.css" /&gt;
+</code></pre>
+
+<p>The hash is computed based on the content of the file, so that it changes whenever
+a file is updated, it doesn&rsquo;t change otherwise. The hash is also computed one file at
+a time, that is, each file has a unique hash.</p>
+
+<h3>Do it automatically</h3>
+
+<p>Computing the hash and renaming the files manually is error prone and you shouldn&rsquo;t
+do this. The only way for this to work, is to add this process into the build stage,
+so the source files are in the <code>src/</code> directory, with their names unmodified and then
+<a href="https://www.npmjs.com/package/hashmark">process them</a> and output the final files in
+the <code>build/</code> directory, with their names containing the hash.</p>
+
+<p>But, what about all the references to these files? These references must be
+<a href="https://www.npmjs.com/package/map-replace">updated</a> on the build stage, too, otherwise
+the CSS, HTML or JavaScript files using any of these assets would be using an outdated
+version of them.</p>
+]]></content>
+  </entry>
+  
+</feed>
