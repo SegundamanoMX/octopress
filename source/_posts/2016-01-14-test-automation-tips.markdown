@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Test Automation Tips"
-date: 2015-07-02 16:48:56 -0500
+date: 2016-01-14 16:48:56 -0500
 comments: true
 author: Oscar Enriquez Mora
 categories: 
