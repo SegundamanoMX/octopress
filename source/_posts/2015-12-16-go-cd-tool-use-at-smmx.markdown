@@ -40,7 +40,7 @@ For DB we had the phases described in the first image above, which included: uni
 For batch, we had the following stages, as seen in the image below: build, create_rpm, push_to_pkg_repo_qa, deploy_qa, push_to_pkg_repo_prod and deploy_prod. 
 ![Batch](/images/batch.png)
 
-The remaining components (Search, API, UI) also had its individual pipelines but were combined from the initial QA instalation onwards. 
+The remaining components (Search, API, UI) also had its individual pipelines but were combined from the initial QA installation onwards. 
 At a high level view in the image below, you can see the flow of these three components and how the three pipelines do a fan in during the deploy to QA. This gives you a general idea on the flow needed for each component and its dependencies (how they can affect each other).
 ![Full Solution](/images/shopsfullpipelines.png)
 
@@ -56,7 +56,7 @@ At a high level view in the image below, you can see the flow of these three com
 --------------------------------------------
 In order to see the details of the pipelines, I intend to explain in this section the stages needed for one of the components we used: UI
 
-For each of the stages there were many people involved, from developers and testers to devops. The GO CD tool does provide a nice way to manage the different stages but and the end there was a lot work needed by the whole team to make all the stages work. The nice thing about the tool is that it gives you the freedom to fit it to you needs. 
+For each of the stages there were many people involved, from developers and testers to devops. The GO CD tool does provide a nice way to manage the different stages but at the end there was a lot work needed by the whole team to make all the stages work. The nice thing about the tool is that it gives you the freedom to fit it to you needs. 
 
 **UI Pipeline**
 
